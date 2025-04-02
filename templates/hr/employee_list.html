@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Employees</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'hr:employee_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Employee
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'hr:export_employees' %}?format=csv">Export as CSV</a></li>
+                    <li><a class="dropdown-item" href="{% url 'hr:export_employees' %}?format=pdf">Export as PDF</a></li>
+                    <li><a class="dropdown-item" href="{% url 'hr:export_employees' %}?format=excel">Export as Excel</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="department" class="form-label">Department</label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="on_leave">On Leave</option>
+                                <option value="terminated">Terminated</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Search employees...">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
+                            <a href="{% url 'hr:employee_list' %}" class="btn btn-outline-secondary">Reset</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee List -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="?sort=id" class="text-dark text-decoration-none">
+                                    Employee ID
+                                    <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort=name" class="text-dark text-decoration-none">
+                                    Name
+                                    <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort=department" class="text-dark text-decoration-none">
+                                    Department
+                                    <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort=position" class="text-dark text-decoration-none">
+                                    Position
+                                    <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sort=join_date" class="text-dark text-decoration-none">
+                                    Join Date
+                                    <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if employees %}
+                            {% for employee in employees %}
+                            <tr>
+                                <td>{{ employee.id }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if employee.photo %}
+                                            <img src="{{ employee.photo.url }}" alt="Profile" class="rounded-circle me-2" width="32">
+                                        {% else %}
+                                            <i class="fas fa-user-circle me-2" style="font-size: 32px;"></i>
+                                        {% endif %}
+                                        {{ employee.name }}
+                                    </div>
+                                </td>
+                                <td>{{ employee.department }}</td>
+                                <td>{{ employee.position }}</td>
+                                <td>{{ employee.join_date }}</td>
+                                <td>
+                                    <span class="badge {% if employee.status == 'active' %}bg-success{% elif employee.status == 'on_leave' %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ employee.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'hr:employee_detail' employee.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'hr:employee_edit' employee.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmTerminate({{ employee.id }})">
+                                            <i class="fas fa-user-times"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No employees found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmTerminate(employeeId) {
+        if (confirm('Are you sure you want to terminate this employee? This action cannot be undone.')) {
+            fetch(`/hr/employees/${employeeId}/terminate/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

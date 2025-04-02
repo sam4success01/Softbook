@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Accounting</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'accounting:journal_entry_create' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> New Journal Entry
+                </a>
+                <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-list"></i> Chart of Accounts
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Assets</h5>
+                    <h2 class="card-text">${{ total_assets|floatformat:2 }}</h2>
+                    <small class="text-muted">Current balance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Liabilities</h5>
+                    <h2 class="card-text">${{ total_liabilities|floatformat:2 }}</h2>
+                    <small class="text-muted">Current balance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue (MTD)</h5>
+                    <h2 class="card-text">${{ revenue_mtd|floatformat:2 }}</h2>
+                    <small class="text-muted">Month to date</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Expenses (MTD)</h5>
+                    <h2 class="card-text">${{ expenses_mtd|floatformat:2 }}</h2>
+                    <small class="text-muted">Month to date</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Transactions -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Transactions</h5>
+                    <a href="{% url 'accounting:journal_entries' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reference</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if transactions %}
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>{{ transaction.date }}</td>
+                                        <td>{{ transaction.reference }}</td>
+                                        <td>{{ transaction.description }}</td>
+                                        <td>${{ transaction.debit|floatformat:2 }}</td>
+                                        <td>${{ transaction.credit|floatformat:2 }}</td>
+                                        <td>
+                                            <span class="badge {% if transaction.status == 'posted' %}bg-success{% elif transaction.status == 'draft' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ transaction.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No recent transactions</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'accounting:journal_entry_create' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-plus-circle"></i> Create Journal Entry
+                    </a>
+                    <a href="{% url 'accounting:chart_of_accounts' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-sitemap"></i> Chart of Accounts
+                    </a>
+                </div>
+            </div>
+
+            <!-- Pending Items -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Pending Items</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if pending_items %}
+                        {% for item in pending_items %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ item.title }}</h6>
+                                <small class="text-muted">{{ item.date }}</small>
+                            </div>
+                            <p class="mb-1">{{ item.description }}</p>
+                            <small>
+                                <a href="{{ item.action_url }}">View Details</a>
+                            </small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center">
+                            No pending items
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+{% endblock %}

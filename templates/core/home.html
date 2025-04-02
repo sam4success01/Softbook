@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}SoftBooks - Accounting Made Simple{% endblock %}
+
+{% block content %}
+<div class="px-4 py-5 my-5 text-center">
+    <h1 class="display-5 fw-bold text-body-emphasis">Welcome to SoftBooks</h1>
+    <div class="col-lg-6 mx-auto">
+        <p class="lead mb-4">
+            A comprehensive accounting solution for modern businesses. Manage your finances, invoices, expenses, and more with our powerful tools.
+        </p>
+        {% if not user.is_authenticated %}
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg px-4 gap-3">Get Started</a>
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary btn-lg px-4">Sign In</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container px-4 py-5">
+    <h2 class="pb-2 border-bottom">Key Features</h2>
+    <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">Accounting</h3>
+                <p>Comprehensive accounting tools for managing your business finances with ease.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">Invoicing</h3>
+                <p>Create and manage professional invoices, track payments, and handle billing efficiently.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">Expense Tracking</h3>
+                <p>Monitor and categorize expenses, manage receipts, and control business spending.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">Fixed Assets</h3>
+                <p>Track and manage your company's fixed assets, depreciation, and maintenance.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">HR Management</h3>
+                <p>Handle employee records, payroll, attendance, and HR documentation efficiently.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div>
+                <h3 class="fs-2">Reports</h3>
+                <p>Generate detailed financial reports and gain insights into your business performance.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

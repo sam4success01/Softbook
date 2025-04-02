@@ -1,0 +1,97 @@
+<!-- Record Depreciation Modal -->
+<div class="modal fade" id="recordDepreciationModal" tabindex="-1" aria-labelledby="recordDepreciationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'fixed_assets:record_depreciation' asset.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recordDepreciationModalLabel">Record Depreciation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="depreciationMethod" class="form-label">Depreciation Method</label>
+                        <select class="form-select" id="depreciationMethod" name="depreciation_method" required>
+                            <option value="">Select method...</option>
+                            <option value="straight_line">Straight Line</option>
+                            <option value="declining_balance">Declining Balance</option>
+                            <option value="sum_of_years">Sum of Years</option>
+                            <option value="units_of_production">Units of Production</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="depreciationDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="depreciationDate" name="depreciation_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="depreciationAmount" class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="depreciationAmount" name="amount" step="0.01" min="0" required>
+                        </div>
+                        <small class="form-text text-muted">
+                            Current book value: ${{ asset.current_value|floatformat:2 }}
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="usefulLife" class="form-label">Useful Life (years)</label>
+                        <input type="number" class="form-control" id="usefulLife" name="useful_life" min="1" step="1">
+                        <small class="form-text text-muted">
+                            Required for straight-line depreciation
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="salvageValue" class="form-label">Salvage Value</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="salvageValue" name="salvage_value" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="depreciationNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="depreciationNotes" name="notes" rows="3"></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            The depreciation amount will be calculated based on the selected method and parameters.
+                            You can adjust the final amount if needed.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-primary me-2" id="calculateDepreciation">
+                        Calculate
+                    </button>
+                    <button type="submit" class="btn btn-primary">Record Depreciation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('calculateDepreciation').addEventListener('click', function() {
+        const method = document.getElementById('depreciationMethod').value;
+        const currentValue = {{ asset.current_value }};
+        const usefulLife = document.getElementById('usefulLife').value;
+        const salvageValue = document.getElementById('salvageValue').value || 0;
+        
+        let depreciationAmount = 0;
+        
+        switch(method) {
+            case 'straight_line':
+                depreciationAmount = (currentValue - salvageValue) / usefulLife;
+                break;
+            case 'declining_balance':
+                depreciationAmount = currentValue * 0.2; // 20% rate example
+                break;
+            // Add other methods as needed
+        }
+        
+        document.getElementById('depreciationAmount').value = depreciationAmount.toFixed(2);
+    });
+</script>
+{% endblock %}

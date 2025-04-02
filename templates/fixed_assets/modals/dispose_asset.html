@@ -1,0 +1,98 @@
+<!-- Dispose Asset Modal -->
+<div class="modal fade" id="disposeAssetModal" tabindex="-1" aria-labelledby="disposeAssetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'fixed_assets:dispose_asset' asset.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="disposeAssetModalLabel">Dispose Asset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This action cannot be undone. The asset will be marked as disposed and removed from active assets.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="disposalDate" class="form-label">Disposal Date</label>
+                        <input type="date" class="form-control" id="disposalDate" name="disposal_date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="disposalReason" class="form-label">Reason for Disposal</label>
+                        <select class="form-select" id="disposalReason" name="disposal_reason" required>
+                            <option value="">Select reason...</option>
+                            <option value="sold">Sold</option>
+                            <option value="scrapped">Scrapped</option>
+                            <option value="donated">Donated</option>
+                            <option value="stolen">Stolen/Lost</option>
+                            <option value="destroyed">Destroyed</option>
+                            <option value="obsolete">Obsolete</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="disposalValue" class="form-label">Disposal Value</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="disposalValue" name="disposal_value" step="0.01" min="0">
+                        </div>
+                        <small class="form-text text-muted">
+                            Current book value: ${{ asset.current_value|floatformat:2 }}
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="disposalRecipient" class="form-label">Recipient/Buyer</label>
+                        <input type="text" class="form-control" id="disposalRecipient" name="disposal_recipient">
+                        <small class="form-text text-muted">
+                            Required if sold or donated
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="disposalNotes" class="form-label">Additional Notes</label>
+                        <textarea class="form-control" id="disposalNotes" name="disposal_notes" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmDisposal" required>
+                            <label class="form-check-label" for="confirmDisposal">
+                                I confirm that I want to dispose of this asset and understand this action cannot be undone.
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            Any gain or loss on disposal will be automatically calculated and recorded in the accounting system.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Dispose Asset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('disposalReason').addEventListener('change', function() {
+        const recipient = document.getElementById('disposalRecipient');
+        if (this.value === 'sold' || this.value === 'donated') {
+            recipient.required = true;
+            recipient.parentElement.classList.add('required');
+        } else {
+            recipient.required = false;
+            recipient.parentElement.classList.remove('required');
+        }
+    });
+</script>
+{% endblock %}

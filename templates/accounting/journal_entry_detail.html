@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <h1 class="h2 mb-0">{{ transaction.reference }}</h1>
+            <span class="badge ms-2 {% if transaction.status == 'posted' %}bg-success{% elif transaction.status == 'draft' %}bg-warning{% elif transaction.status == 'voided' %}bg-danger{% endif %}">
+                {{ transaction.get_status_display }}
+            </span>
+        </div>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'accounting:journal_entries' %}" class="btn btn-sm btn-outline-secondary" title="Back to List">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+                <a href="{% url 'accounting:journal_entry_edit' transaction.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Entry">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% if transaction.status == 'draft' %}
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="postEntry(this)" title="Post Entry">
+                    <i class="fas fa-check"></i> <span class="button-text">Post</span>
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEntry(this)" title="Delete Entry">
+                    <i class="fas fa-trash"></i> <span class="button-text">Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Entry Details -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Entry Information</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Reference</dt>
+                        <dd class="col-sm-8">{{ transaction.reference }}</dd>
+
+                        <dt class="col-sm-4">Date</dt>
+                        <dd class="col-sm-8">{{ transaction.date|date:"Y-m-d" }}</dd>
+
+                        <dt class="col-sm-4">Description</dt>
+                        <dd class="col-sm-8">{{ transaction.description }}</dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge {% if transaction.status == 'posted' %}bg-success{% elif transaction.status == 'draft' %}bg-warning{% elif transaction.status == 'voided' %}bg-danger{% endif %}">
+                                {{ transaction.get_status_display }}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Entry Metadata</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Created By</dt>
+                        <dd class="col-sm-8">{{ transaction.created_by }}</dd>
+
+                        <dt class="col-sm-4">Created At</dt>
+                        <dd class="col-sm-8">{{ transaction.created_at|date:"Y-m-d H:i:s" }}</dd>
+
+                        <dt class="col-sm-4">Last Updated</dt>
+                        <dd class="col-sm-8">{{ transaction.updated_at|date:"Y-m-d H:i:s" }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Lines -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Transaction Lines</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Account</th>
+                            <th>Description</th>
+                            <th class="text-end">Debit</th>
+                            <th class="text-end">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in lines %}
+                        <tr>
+                            <td>{{ line.account.code }} - {{ line.account.name }}</td>
+                            <td>{{ line.description }}</td>
+                            <td class="text-end">{% if line.debit %}${{ line.debit|floatformat:2 }}{% endif %}</td>
+                            <td class="text-end">{% if line.credit %}${{ line.credit|floatformat:2 }}{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <th colspan="2">Total</th>
+                            <th class="text-end">${{ total_debit|floatformat:2 }}</th>
+                            <th class="text-end">${{ total_credit|floatformat:2 }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+    .btn:disabled {
+        cursor: not-allowed;
+    }
+    .btn .spinner-border {
+        width: 1rem;
+        height: 1rem;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function setButtonLoading(button, isLoading) {
+        const icon = button.querySelector('i');
+        const text = button.querySelector('.button-text');
+        const originalIcon = icon.className;
+        
+        if (isLoading) {
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+        } else {
+            button.disabled = false;
+            icon.className = originalIcon;
+        }
+    }
+
+    function handleError(error, action) {
+        console.error(`Error ${action} journal entry:`, error);
+        alert(`Error ${action} journal entry. Please try again.`);
+    }
+
+    async function postEntry(button) {
+        if (confirm('Are you sure you want to post this entry? This action cannot be undone.')) {
+            setButtonLoading(button, true);
+            try {
+                const response = await fetch('{% url "accounting:journal_entry_post" transaction.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const errorData = await response.text();
+                    handleError(errorData, 'posting');
+                    setButtonLoading(button, false);
+                }
+            } catch (error) {
+                handleError(error, 'posting');
+                setButtonLoading(button, false);
+            }
+        }
+    }
+
+    async function deleteEntry(button) {
+        if (confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
+            setButtonLoading(button, true);
+            try {
+                const response = await fetch('{% url "accounting:journal_entry_delete" transaction.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '{% url "accounting:journal_entries" %}';
+                } else {
+                    const errorData = await response.text();
+                    handleError(errorData, 'deleting');
+                    setButtonLoading(button, false);
+                }
+            } catch (error) {
+                handleError(error, 'deleting');
+                setButtonLoading(button, false);
+            }
+        }
+    }
+</script>
+{% endblock %}

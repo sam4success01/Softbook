@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Fixed Assets Management</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'fixed_assets:asset_create' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add New Asset
+                </a>
+                <a href="{% url 'fixed_assets:depreciation_report' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-chart-line"></i> Depreciation Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Assets</h5>
+                    <h2 class="card-text">{{ total_assets }}</h2>
+                    <small class="text-muted">Active assets</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Value</h5>
+                    <h2 class="card-text">${{ total_value|floatformat:2 }}</h2>
+                    <small class="text-muted">Current book value</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Maintenance</h5>
+                    <h2 class="card-text">{{ pending_maintenance }}</h2>
+                    <small class="text-muted">Scheduled tasks</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Depreciation</h5>
+                    <h2 class="card-text">${{ depreciation_value|floatformat:2 }}</h2>
+                    <small class="text-muted">Total depreciation</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Asset List -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Assets</h5>
+                    <a href="{% url 'fixed_assets:asset_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Asset ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Purchase Date</th>
+                                    <th>Value</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if assets %}
+                                    {% for asset in assets %}
+                                    <tr>
+                                        <td>{{ asset.id }}</td>
+                                        <td>{{ asset.name }}</td>
+                                        <td>{{ asset.category }}</td>
+                                        <td>{{ asset.purchase_date }}</td>
+                                        <td>${{ asset.value|floatformat:2 }}</td>
+                                        <td>{{ asset.status }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No assets found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links and Alerts -->
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'fixed_assets:category_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags"></i> Manage Categories
+                    </a>
+                    <a href="{% url 'fixed_assets:maintenance_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tools"></i> Maintenance Schedule
+                    </a>
+                    <a href="{% url 'fixed_assets:depreciation_report' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-line"></i> Depreciation Report
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-file-export"></i> Export Asset List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Maintenance Alerts -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Maintenance Alerts</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if maintenance_alerts %}
+                        {% for alert in maintenance_alerts %}
+                        <div class="list-group-item">
+                            <h6 class="mb-1">{{ alert.asset_name }}</h6>
+                            <p class="mb-1">{{ alert.description }}</p>
+                            <small class="text-muted">Due: {{ alert.due_date }}</small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center">
+                            No pending maintenance alerts
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+{% endblock %}

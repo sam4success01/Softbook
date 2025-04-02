@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ title }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <button type="submit" form="journalEntryForm" name="action" value="save" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-save"></i> Save Draft
+                </button>
+                {% if not transaction or transaction.status == 'draft' %}
+                <button type="submit" form="journalEntryForm" name="action" value="post" class="btn btn-sm btn-primary">
+                    <i class="fas fa-check"></i> Post Entry
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Journal Entry Form -->
+    <div class="card">
+        <div class="card-body">
+            <form id="journalEntryForm" method="post" action="{% if transaction %}{% url 'accounting:journal_entry_edit' transaction.id %}{% else %}{% url 'accounting:journal_entry_create' %}{% endif %}">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="entryDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="entryDate" name="date" required 
+                               value="{% if transaction %}{{ transaction.date|date:'Y-m-d' }}{% else %}{{ current_date|date:'Y-m-d' }}{% endif %}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="reference" class="form-label">Reference</label>
+                        <input type="text" class="form-control" id="reference" name="reference" 
+                               placeholder="e.g., INV-001" value="{% if transaction %}{{ transaction.reference }}{% endif %}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               placeholder="Enter description" required value="{% if transaction %}{{ transaction.description }}{% endif %}">
+                    </div>
+                </div>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered" id="journalEntryTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 35%">Account</th>
+                                <th style="width: 35%">Description</th>
+                                <th style="width: 12%">Debit</th>
+                                <th style="width: 12%">Credit</th>
+                                <th style="width: 6%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journalEntryLines">
+                            {% if lines %}
+                                {% for line in lines %}
+                                <tr class="entry-line">
+                                    <td>
+                                        <select class="form-select account-select" name="account[]" required>
+                                            <option value="">Select account...</option>
+                                            {% for account in accounts %}
+                                            <option value="{{ account.id }}" {% if account.id == line.account.id %}selected{% endif %}>
+                                                {{ account.code }} - {{ account.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control" name="line_description[]" 
+                                               value="{{ line.description|default:'' }}" placeholder="Line description">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control debit-amount" name="debit[]" 
+                                               step="0.01" min="0" value="{{ line.debit|floatformat:2|default:'0.00' }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control credit-amount" name="credit[]" 
+                                               step="0.01" min="0" value="{{ line.credit|floatformat:2|default:'0.00' }}">
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-line" {% if forloop.first and forloop.last %}disabled{% endif %}>
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr class="entry-line">
+                                    <td>
+                                        <select class="form-select account-select" name="account[]" required>
+                                            <option value="">Select account...</option>
+                                            {% for account in accounts %}
+                                            <option value="{{ account.id }}">{{ account.code }} - {{ account.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control" name="line_description[]" placeholder="Line description">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control debit-amount" name="debit[]" step="0.01" min="0" value="0.00">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control credit-amount" name="credit[]" step="0.01" min="0" value="0.00">
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-line" disabled>
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="2" class="text-end">
+                                    <strong>Totals:</strong>
+                                </td>
+                                <td>
+                                    <strong id="totalDebit">{{ total_debit|default:'0.00' }}</strong>
+                                </td>
+                                <td>
+                                    <strong id="totalCredit">{{ total_credit|default:'0.00' }}</strong>
+                                </td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="5">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addLine">
+                                        <i class="fas fa-plus"></i> Add Line
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2">{% if transaction %}{{ transaction.notes }}{% endif %}</textarea>
+                    </div>
+                </div>
+
+                <div id="balanceWarning" class="alert alert-warning {% if total_debit == total_credit %}d-none{% endif %}">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Debits and credits must be equal before posting.
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const journalEntryTable = document.getElementById('journalEntryTable');
+        const addLineButton = document.getElementById('addLine');
+        const balanceWarning = document.getElementById('balanceWarning');
+        const form = document.getElementById('journalEntryForm');
+
+        // Add new line
+        addLineButton.addEventListener('click', function() {
+            const template = document.querySelector('.entry-line');
+            const newRow = template.cloneNode(true);
+            
+            // Reset form fields
+            newRow.querySelector('select[name="account[]"]').selectedIndex = 0;
+            newRow.querySelector('input[name="line_description[]"]').value = '';
+            newRow.querySelector('input[name="debit[]"]').value = '0.00';
+            newRow.querySelector('input[name="credit[]"]').value = '0.00';
+            
+            // Enable remove button
+            newRow.querySelector('.remove-line').disabled = false;
+            
+            // Add to table and setup events
+            document.getElementById('journalEntryLines').appendChild(newRow);
+            setupLineEvents(newRow);
+        });
+
+        // Setup line events
+        function setupLineEvents(row) {
+            // Remove line
+            row.querySelector('.remove-line').addEventListener('click', function() {
+                row.remove();
+                updateTotals();
+            });
+
+            // Update totals on amount change
+            row.querySelectorAll('.debit-amount, .credit-amount').forEach(input => {
+                input.addEventListener('input', function() {
+                    // Clear the other amount field
+                    const isDebit = this.classList.contains('debit-amount');
+                    const otherField = row.querySelector(isDebit ? '.credit-amount' : '.debit-amount');
+                    if (this.value && this.value !== '0' && this.value !== '0.00') {
+                        otherField.value = '0.00';
+                    }
+                    updateTotals();
+                });
+
+                // Format number on blur
+                input.addEventListener('blur', function() {
+                    if (this.value === '' || isNaN(this.value)) {
+                        this.value = '0.00';
+                    } else {
+                        this.value = parseFloat(this.value).toFixed(2);
+                    }
+                    updateTotals();
+                });
+            });
+        }
+
+        // Update totals
+        function updateTotals() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            document.querySelectorAll('.debit-amount').forEach(input => {
+                totalDebit += parseFloat(input.value || 0);
+            });
+
+            document.querySelectorAll('.credit-amount').forEach(input => {
+                totalCredit += parseFloat(input.value || 0);
+            });
+
+            document.getElementById('totalDebit').textContent = totalDebit.toFixed(2);
+            document.getElementById('totalCredit').textContent = totalCredit.toFixed(2);
+
+            // Show/hide balance warning
+            balanceWarning.classList.toggle('d-none', Math.abs(totalDebit - totalCredit) < 0.01);
+        }
+
+        // Form submission validation
+        form.addEventListener('submit', function(e) {
+            const action = e.submitter.value;
+            const totalDebit = parseFloat(document.getElementById('totalDebit').textContent);
+            const totalCredit = parseFloat(document.getElementById('totalCredit').textContent);
+
+            // Set the action value first
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = e.submitter.value;
+            form.appendChild(actionInput);
+
+            // Validate totals when posting
+            if (action === 'post' && Math.abs(totalDebit - totalCredit) >= 0.01) {
+                e.preventDefault();
+                form.removeChild(actionInput);
+                alert('Debits and credits must be equal to post the entry.');
+                return;
+            }
+
+            // Ensure at least one line
+            if (document.querySelectorAll('.entry-line').length === 0) {
+                e.preventDefault();
+                alert('Journal entry must have at least one line.');
+                return;
+            }
+
+            // Validate line items
+            let valid = true;
+            document.querySelectorAll('.entry-line').forEach(row => {
+                const account = row.querySelector('.account-select').value;
+                const debit = parseFloat(row.querySelector('.debit-amount').value || 0);
+                const credit = parseFloat(row.querySelector('.credit-amount').value || 0);
+
+                if (!account || (debit === 0 && credit === 0)) {
+                    valid = false;
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                alert('Each line must have an account selected and either a debit or credit amount.');
+            }
+        });
+
+        // Initialize events for existing lines
+        document.querySelectorAll('.entry-line').forEach(setupLineEvents);
+
+        // Initial totals calculation
+        updateTotals();
+    });
+</script>
+{% endblock %}

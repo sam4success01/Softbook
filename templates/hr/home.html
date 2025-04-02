@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">HR Management</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'hr:employee_create' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-user-plus"></i> Add Employee
+                </a>
+                <a href="{% url 'hr:mark_attendance' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-clipboard-check"></i> Mark Attendance
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Employees</h5>
+                    <h2 class="card-text">{{ total_employees }}</h2>
+                    <small class="text-muted">Active employees</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Present Today</h5>
+                    <h2 class="card-text">{{ present_today }}</h2>
+                    <small class="text-muted">Attendance marked</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">On Leave</h5>
+                    <h2 class="card-text">{{ on_leave }}</h2>
+                    <small class="text-muted">Currently on leave</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Requests</h5>
+                    <h2 class="card-text">{{ pending_requests }}</h2>
+                    <small class="text-muted">Awaiting approval</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Activities -->
+        <div class="col-md-8">
+            <!-- Today's Attendance -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Today's Attendance</h5>
+                    <a href="{% url 'hr:attendance_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Check In</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if attendance_records %}
+                                    {% for record in attendance_records %}
+                                    <tr>
+                                        <td>{{ record.employee_name }}</td>
+                                        <td>{{ record.department }}</td>
+                                        <td>{{ record.check_in_time }}</td>
+                                        <td>
+                                            <span class="badge {% if record.status == 'present' %}bg-success{% elif record.status == 'late' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ record.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No attendance records for today</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leave Requests -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Leave Requests</h5>
+                    <a href="{% url 'hr:leave_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if leave_requests %}
+                                    {% for request in leave_requests %}
+                                    <tr>
+                                        <td>{{ request.employee_name }}</td>
+                                        <td>{{ request.leave_type }}</td>
+                                        <td>{{ request.start_date }}</td>
+                                        <td>{{ request.end_date }}</td>
+                                        <td>
+                                            <span class="badge {% if request.status == 'approved' %}bg-success{% elif request.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ request.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{% url 'hr:leave_detail' request.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if request.status == 'pending' %}
+                                                <button type="button" class="btn btn-sm btn-outline-success" onclick="approveLeave({{ request.id }})">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="rejectLeave({{ request.id }})">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No leave requests found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'hr:employee_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-users"></i> View All Employees
+                    </a>
+                    <a href="{% url 'hr:leave_request' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-calendar-plus"></i> Request Leave
+                    </a>
+                    <a href="{% url 'hr:payroll' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-money-check-alt"></i> Process Payroll
+                    </a>
+                    <a href="{% url 'hr:performance_reviews' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-line"></i> Performance Reviews
+                    </a>
+                    <a href="{% url 'hr:department_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-building"></i> Departments
+                    </a>
+                </div>
+            </div>
+
+            <!-- Department Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Department Summary</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if departments %}
+                        {% for dept in departments %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">{{ dept.name }}</h6>
+                                <span class="badge bg-primary rounded-pill">{{ dept.employee_count }}</span>
+                            </div>
+                            <small class="text-muted">
+                                Present: {{ dept.present_count }} | On Leave: {{ dept.leave_count }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center">
+                            No departments found
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Upcoming Events -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upcoming Events</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if events %}
+                        {% for event in events %}
+                        <div class="list-group-item">
+                            <h6 class="mb-1">{{ event.title }}</h6>
+                            <p class="mb-1 small">{{ event.description }}</p>
+                            <small class="text-muted">{{ event.date }}</small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center">
+                            No upcoming events
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function approveLeave(requestId) {
+        if (confirm('Are you sure you want to approve this leave request?')) {
+            fetch(`/hr/leave/${requestId}/approve/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            });
+        }
+    }
+
+    function rejectLeave(requestId) {
+        if (confirm('Are you sure you want to reject this leave request?')) {
+            fetch(`/hr/leave/${requestId}/reject/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
