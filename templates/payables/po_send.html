@@ -1,0 +1,70 @@
+<!-- po_send.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Send Purchase Order</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Purchase Order Details</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>PO Number:</strong> {{ po.po_number }}<br>
+                                <strong>Date:</strong> {{ po.po_date }}<br>
+                                <strong>Total:</strong> ${{ po.total|floatformat:2 }}
+                            </div>
+                            <div class="col-6">
+                                <strong>Vendor:</strong> {{ po.vendor.company_name }}<br>
+                                <strong>Email:</strong> {{ po.vendor.email|default:"Not specified" }}<br>
+                                <strong>Contact:</strong> {{ po.vendor.contact_person|default:"Not specified" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if not po.vendor.email %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This vendor doesn't have an email address specified. 
+                        You may want to <a href="{% url 'payables:vendor_edit' po.vendor.id %}">update the vendor</a> 
+                        with an email address first.
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <h6>What happens when you send:</h6>
+                            <ul class="text-muted">
+                                <li>Purchase order status will change to "Sent"</li>
+                                {% if po.vendor.email %}
+                                <li>Email will be sent to {{ po.vendor.email }}</li>
+                                {% endif %}
+                                <li>PO will be marked as sent in the system</li>
+                                <li>You can track the PO status and convert to bill when ready</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:po_detail' po.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send Purchase Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

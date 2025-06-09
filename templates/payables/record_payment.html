@@ -1,0 +1,155 @@
+<!-- record_payment.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-money-check"></i> Record Payment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Bill Information -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-file-invoice"></i> Bill Information</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Bill Number:</strong> {{ bill.bill_number }}<br>
+                                <strong>Vendor:</strong> {{ bill.vendor.company_name }}<br>
+                                <strong>Bill Date:</strong> {{ bill.bill_date }}
+                            </div>
+                            <div class="col-6">
+                                <strong>Due Date:</strong> {{ bill.due_date }}<br>
+                                <strong>Total Amount:</strong> ${{ bill.total|floatformat:2 }}<br>
+                                <strong>Balance Due:</strong> <span class="fw-bold text-primary">${{ bill.balance_due|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Form -->
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="payment_date" class="form-label">
+                                Payment Date <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" name="payment_date" id="payment_date" 
+                                   class="form-control" value="{{ today }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">
+                                Payment Amount <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="amount" id="amount" 
+                                       class="form-control" step="0.01" 
+                                       max="{{ max_amount }}" value="{{ max_amount }}" required>
+                            </div>
+                            <div class="form-text">Maximum: ${{ max_amount }}</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_method" class="form-label">
+                                Payment Method <span class="text-danger">*</span>
+                            </label>
+                            <select name="payment_method" id="payment_method" class="form-select" required>
+                                <option value="">Select Method</option>
+                                <option value="check">Check</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="credit_card">Credit Card</option>
+                                <option value="cash">Cash</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reference_number" class="form-label">
+                                Reference Number
+                            </label>
+                            <input type="text" name="reference_number" id="reference_number" 
+                                   class="form-control" placeholder="Check number, transaction ID, etc.">
+                            <div class="form-text">Optional: Check number, transaction ID, or other reference</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea name="notes" id="notes" class="form-control" rows="3" 
+                                      placeholder="Optional payment notes"></textarea>
+                        </div>
+
+                        <!-- Payment Summary -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6>Payment Summary</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <strong>Current Balance:</strong> ${{ bill.balance_due|floatformat:2 }}<br>
+                                        <strong>Payment Amount:</strong> $<span id="payment-amount-display">{{ max_amount }}</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Remaining Balance:</strong> $<span id="remaining-balance">0.00</span><br>
+                                        <strong>Status After Payment:</strong> <span id="status-after" class="badge bg-success">Paid</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:bill_detail' bill.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-money-check"></i> Record Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('amount');
+    const paymentAmountDisplay = document.getElementById('payment-amount-display');
+    const remainingBalance = document.getElementById('remaining-balance');
+    const statusAfter = document.getElementById('status-after');
+    const billBalance = {{ bill.balance_due }};
+
+    function updatePaymentSummary() {
+        const paymentAmount = parseFloat(amountInput.value) || 0;
+        const remaining = Math.max(0, billBalance - paymentAmount);
+        
+        paymentAmountDisplay.textContent = paymentAmount.toFixed(2);
+        remainingBalance.textContent = remaining.toFixed(2);
+        
+        if (remaining === 0) {
+            statusAfter.textContent = 'Paid';
+            statusAfter.className = 'badge bg-success';
+        } else if (paymentAmount > 0) {
+            statusAfter.textContent = 'Partially Paid';
+            statusAfter.className = 'badge bg-warning';
+        } else {
+            statusAfter.textContent = 'Open';
+            statusAfter.className = 'badge bg-danger';
+        }
+    }
+
+    amountInput.addEventListener('input', updatePaymentSummary);
+    updatePaymentSummary(); // Initial call
+});
+</script>
+{% endblock %}

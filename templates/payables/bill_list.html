@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Bills</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'payables:bill_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Bill
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <a data-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false">
+                    <i class="fas fa-filter"></i> Filters
+                </a>
+            </h5>
+        </div>
+        <div class="collapse" id="filterCollapse">
+            <div class="card-body">
+                <form method="get" class="form-row">
+                    <div class="col-md-3 mb-3">
+                        {{ filter_form.vendor.label_tag }}
+                        {{ filter_form.vendor }}
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        {{ filter_form.status.label_tag }}
+                        {{ filter_form.status }}
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        {{ filter_form.date_from.label_tag }}
+                        {{ filter_form.date_from }}
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        {{ filter_form.date_to.label_tag }}
+                        {{ filter_form.date_to }}
+                    </div>
+                    <div class="col-md-1 mb-3">
+                        {{ filter_form.min_amount.label_tag }}
+                        {{ filter_form.min_amount }}
+                    </div>
+                    <div class="col-md-1 mb-3">
+                        {{ filter_form.max_amount.label_tag }}
+                        {{ filter_form.max_amount }}
+                    </div>
+                    <div class="col-md-1 mb-3">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary btn-block">Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Bills</h5>
+                    <h3>${{ total_amount|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Paid Amount</h5>
+                    <h3>${{ paid_amount|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Outstanding</h5>
+                    <h3>${{ pending_amount|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bills Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if bills %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'bill_number' %}-{% endif %}bill_number">
+                                    Bill # {% if request.GET.order_by == 'bill_number' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-bill_number' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'vendor__company_name' %}-{% endif %}vendor__company_name">
+                                    Vendor {% if request.GET.order_by == 'vendor__company_name' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-vendor__company_name' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'bill_date' %}-{% endif %}bill_date">
+                                    Bill Date {% if request.GET.order_by == 'bill_date' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-bill_date' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'due_date' %}-{% endif %}due_date">
+                                    Due Date {% if request.GET.order_by == 'due_date' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-due_date' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="text-right">
+                                <a href="?order_by={% if request.GET.order_by == 'total' %}-{% endif %}total">
+                                    Total {% if request.GET.order_by == 'total' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-total' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="text-right">Balance Due</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in bills %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'payables:bill_detail' bill.id %}">{{ bill.bill_number }}</a>
+                                {% if bill.vendor_bill_number %}
+                                <small class="text-muted d-block">Vendor: {{ bill.vendor_bill_number }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ bill.vendor.company_name }}</td>
+                            <td>{{ bill.bill_date }}</td>
+                            <td class="{% if bill.status == 'overdue' %}text-danger{% endif %}">
+                                {{ bill.due_date }}
+                            </td>
+                            <td class="text-right">${{ bill.total|floatformat:2 }}</td>
+                            <td class="text-right">
+                                {% if bill.balance_due > 0 %}
+                                    <span class="text-danger">${{ bill.balance_due|floatformat:2 }}</span>
+                                {% else %}
+                                    $0.00
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if bill.status == 'paid' %}
+                                    <span class="badge badge-success">Paid</span>
+                                {% elif bill.status == 'overdue' %}
+                                    <span class="badge badge-danger">Overdue</span>
+                                {% elif bill.status == 'open' %}
+                                    <span class="badge badge-warning">Open</span>
+                                {% elif bill.status == 'partially_paid' %}
+                                    <span class="badge badge-info">Partially Paid</span>
+                                {% elif bill.status == 'cancelled' %}
+                                    <span class="badge badge-secondary">Cancelled</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ bill.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'payables:bill_detail' bill.id %}" class="btn btn-outline-info" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if bill.status != 'paid' and bill.status != 'cancelled' %}
+                                    <a href="{% url 'payables:bill_edit' bill.id %}" class="btn btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'payables:bill_payment' bill.id %}" class="btn btn-outline-success" title="Record Payment">
+                                        <i class="fas fa-money-check"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                <h5>No bills found</h5>
+                <p class="text-muted">Start by creating your first bill</p>
+                <a href="{% url 'payables:bill_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Bill
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if is_paginated %}
+        <div class="card-footer bg-white">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{{ request.GET|dictsort:0|join:'&'|safe }}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|dictsort:0|join:'&'|safe }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }} <span class="sr-only">(current)</span></span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{{ request.GET|dictsort:0|join:'&'|safe }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|dictsort:0|join:'&'|safe }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|dictsort:0|join:'&'|safe }}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

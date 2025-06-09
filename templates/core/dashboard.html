@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard - SoftBooks{% endblock %}
+{% block title %}Dashboard - Rinacle{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,7 +8,7 @@
         <h1 class="h2">Dashboard</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2">
-                <a href="{% url 'invoicing:create' %}" class="btn btn-sm btn-outline-primary">New Invoice</a>
+                <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-sm btn-outline-primary">New Invoice</a>
                 <a href="{% url 'expenses:create' %}" class="btn btn-sm btn-outline-primary">New Expense</a>
                 <a href="{% url 'banking:transactions' %}" class="btn btn-sm btn-outline-primary">Banking</a>
             </div>

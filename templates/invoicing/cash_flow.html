@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cash Flow Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Cash Flow Report</h1>
+            <p class="text-muted">Track your incoming and outgoing cash to better manage your business finances</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'invoicing:reports' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="col-md-3 form-group">
+                    <label for="period">Time Period</label>
+                    <select name="period" id="period" class="form-control">
+                        <option value="this_month" {% if request.GET.period == 'this_month' %}selected{% endif %}>This Month</option>
+                        <option value="last_month" {% if request.GET.period == 'last_month' %}selected{% endif %}>Last Month</option>
+                        <option value="this_quarter" {% if request.GET.period == 'this_quarter' %}selected{% endif %}>This Quarter</option>
+                        <option value="last_quarter" {% if request.GET.period == 'last_quarter' %}selected{% endif %}>Last Quarter</option>
+                        <option value="this_year" {% if request.GET.period == 'this_year' %}selected{% endif %}>This Year</option>
+                        <option value="last_year" {% if request.GET.period == 'last_year' %}selected{% endif %}>Last Year</option>
+                        <option value="custom" {% if request.GET.period == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group" id="startDateGroup" {% if request.GET.period != 'custom' and not request.GET.start_date %}style="display: none;"{% endif %}>
+                    <label for="start_date">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" 
+                           value="{{ request.GET.start_date|default:default_start_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group" id="endDateGroup" {% if request.GET.period != 'custom' and not request.GET.end_date %}style="display: none;"{% endif %}>
+                    <label for="end_date">End Date</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" 
+                           value="{{ request.GET.end_date|default:default_end_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="interval">Interval</label>
+                    <select name="interval" id="interval" class="form-control">
+                        <option value="daily" {% if request.GET.interval == 'daily' %}selected{% endif %}>Daily</option>
+                        <option value="weekly" {% if request.GET.interval == 'weekly' %}selected{% endif %}>Weekly</option>
+                        <option value="monthly" {% if request.GET.interval == 'monthly' or not request.GET.interval %}selected{% endif %}>Monthly</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6 form-group d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'invoicing:cash_flow' %}" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Cash Flow Trend</h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if cash_flow_data %}
+                    <div style="height: 400px">
+                        <canvas id="cashFlowChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+                        <h5>No cash flow data found</h5>
+                        <p class="text-muted">Adjust your filters or create some invoices and payments to see cash flow data</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Total Inflow</h6>
+                                    <h3 class="mb-0 text-success">${{ total_inflow|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Total Outflow</h6>
+                                    <h3 class="mb-0 text-danger">${{ total_outflow|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Net Cash Flow</h6>
+                                    <h3 class="mb-0 {% if net_cash_flow >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ net_cash_flow|floatformat:2 }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Current Cash Position</h6>
+                                    <h3 class="mb-0">${{ current_cash_position|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Cash Flow Details</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if cash_flow_data %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th class="text-right">Inflow</th>
+                            <th class="text-right">Outflow</th>
+                            <th class="text-right">Net Flow</th>
+                            <th class="text-right">Cumulative</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in cash_flow_data %}
+                        <tr>
+                            <td>{{ period.label }}</td>
+                            <td class="text-right text-success">${{ period.inflow|floatformat:2 }}</td>
+                            <td class="text-right text-danger">${{ period.outflow|floatformat:2 }}</td>
+                            <td class="text-right {% if period.net_flow >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ period.net_flow|floatformat:2 }}
+                            </td>
+                            <td class="text-right {% if period.cumulative >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ period.cumulative|floatformat:2 }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No cash flow data available for the selected criteria</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Upcoming Cash Inflows</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if upcoming_inflows %}
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Invoice #</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in upcoming_inflows %}
+                                <tr>
+                                    <td>{{ item.due_date }}</td>
+                                    <td>{{ item.customer }}</td>
+                                    <td>
+                                        <a href="{% url 'invoicing:invoice_detail' item.id %}">
+                                            {{ item.invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td class="text-right">${{ item.balance_due|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No upcoming inflows found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Recent Payments</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_payments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Method</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date }}</td>
+                                    <td>{{ payment.invoice.customer }}</td>
+                                    <td>{{ payment.get_payment_method_display }}</td>
+                                    <td class="text-right">${{ payment.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No recent payments found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Cash Flow Projections</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-7">
+                    <div style="height: 300px">
+                        <canvas id="projectionChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th class="text-right">Projected Inflow</th>
+                                    <th class="text-right">Projected Cash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for projection in cash_flow_projections %}
+                                <tr>
+                                    <td>{{ projection.label }}</td>
+                                    <td class="text-right">${{ projection.inflow|floatformat:2 }}</td>
+                                    <td class="text-right">${{ projection.balance|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mt-3">
+                        <i class="fas fa-info-circle"></i> Projections are based on current outstanding invoices and historical payment patterns.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle custom date inputs when period changes
+        const periodSelect = document.getElementById('period');
+        const startDateGroup = document.getElementById('startDateGroup');
+        const endDateGroup = document.getElementById('endDateGroup');
+        
+        periodSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                startDateGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+            } else {
+                startDateGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+            }
+        });
+        
+        // Initialize charts if data is available
+        {% if cash_flow_data %}
+        
+        // Cash Flow Chart
+        var cashFlowCtx = document.getElementById('cashFlowChart').getContext('2d');
+        var cashFlowChart = new Chart(cashFlowCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for period in cash_flow_data %}
+                    '{{ period.label }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    type: 'bar',
+                    label: 'Inflow',
+                    data: [
+                        {% for period in cash_flow_data %}
+                        {{ period.inflow }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(40, 167, 69, 0.5)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }, {
+                    type: 'bar',
+                    label: 'Outflow',
+                    data: [
+                        {% for period in cash_flow_data %}
+                        {{ period.outflow }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(220, 53, 69, 0.5)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1
+                }, {
+                    type: 'line',
+                    label: 'Net Cash Flow',
+                    data: [
+                        {% for period in cash_flow_data %}
+                        {{ period.net_flow }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(0, 123, 255, 1)',
+                    lineTension: 0.2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            callback: function(value, index, values) {
+                                return '$' + value;
+                            }
+                        }
+                    }]
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var label = data.datasets[tooltipItem.datasetIndex].label || '';
+                            return label + ': $' + Number(tooltipItem.yLabel).toFixed(2);
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Projection Chart
+        var projectionCtx = document.getElementById('projectionChart').getContext('2d');
+        var projectionChart = new Chart(projectionCtx, {
+            type: 'line',
+            data: {
+                labels: [
+                    {% for projection in cash_flow_projections %}
+                    '{{ projection.label }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Projected Cash Position',
+                    data: [
+                        {% for projection in cash_flow_projections %}
+                        {{ projection.balance }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    fill: true,
+                    lineTension: 0.2
+                }, {
+                    label: 'Projected Inflows',
+                    data: [
+                        {% for projection in cash_flow_projections %}
+                        {{ projection.inflow }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(40, 167, 69, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 3,
+                    fill: false,
+                    lineTension: 0.2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            callback: function(value, index, values) {
+                                return '$' + value;
+                            }
+                        }
+                    }]
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var label = data.datasets[tooltipItem.datasetIndex].label || '';
+                            return label + ': $' + Number(tooltipItem.yLabel).toFixed(2);
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

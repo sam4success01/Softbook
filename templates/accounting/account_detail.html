@@ -46,8 +46,9 @@
                         <dt class="col-sm-4">Description</dt>
                         <dd class="col-sm-8">{{ account.description|default:"-" }}</dd>
 
+                        <!-- Change this in account_detail.html -->
                         <dt class="col-sm-4">Balance</dt>
-                        <dd class="col-sm-8">${{ account.balance|floatformat:2 }}</dd>
+                        <dd class="col-sm-8">${{ account.current_balance|default:account.balance|floatformat:2 }}</dd>
 
                         <dt class="col-sm-4">Status</dt>
                         <dd class="col-sm-8">
@@ -125,7 +126,7 @@
 
 <!-- Edit Account Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="post" action="{% url 'accounting:account_edit' account.id %}">
                 {% csrf_token %}
@@ -134,20 +135,73 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="accountName" class="form-label">Account Name</label>
-                        <input type="text" class="form-control" id="accountName" name="name" value="{{ account.name }}" required>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="accountCode" class="form-label">Account Code</label>
+                            <input type="text" class="form-control" id="accountCode" name="code" value="{{ account.code }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="accountName" class="form-label">Account Name</label>
+                            <input type="text" class="form-control" id="accountName" name="name" value="{{ account.name }}" required>
+                        </div>
                     </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="accountType" class="form-label">Account Type</label>
+                            <select class="form-select" id="accountType" name="type" {% if account.has_transactions %}disabled{% endif %}>
+                                <option value="asset" {% if account.type == 'asset' %}selected{% endif %}>Asset</option>
+                                <option value="liability" {% if account.type == 'liability' %}selected{% endif %}>Liability</option>
+                                <option value="equity" {% if account.type == 'equity' %}selected{% endif %}>Equity</option>
+                                <option value="revenue" {% if account.type == 'revenue' %}selected{% endif %}>Revenue</option>
+                                <option value="expense" {% if account.type == 'expense' %}selected{% endif %}>Expense</option>
+                            </select>
+                            {% if account.has_transactions %}
+                            <small class="text-muted">Account type cannot be changed after transactions have been recorded.</small>
+                            <input type="hidden" name="type" value="{{ account.type }}">
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="accountStatus" class="form-label">Status</label>
+                            <select class="form-select" id="accountStatus" name="status">
+                                <option value="active" {% if account.status == 'active' %}selected{% endif %}>Active</option>
+                                <option value="inactive" {% if account.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="parentAccount" class="form-label">Parent Account</label>
+                            <select class="form-select" id="parentAccount" name="parent" {% if account.has_children %}disabled{% endif %}>
+                                <option value="">None (Top Level)</option>
+                                {% for parent_acc in available_parents %}
+                                <option value="{{ parent_acc.id }}" {% if account.parent and account.parent.id == parent_acc.id %}selected{% endif %}>
+                                    {{ parent_acc.code }} - {{ parent_acc.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if account.has_children %}
+                            <small class="text-muted">Parent account cannot be changed for accounts with child accounts.</small>
+                            <input type="hidden" name="parent" value="{{ account.parent.id|default:'' }}">
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="openingBalance" class="form-label">Opening Balance</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="openingBalance" name="opening_balance" value="{{ account.opening_balance }}" {% if account.has_transactions %}disabled{% endif %}>
+                            </div>
+                            {% if account.has_transactions %}
+                            <small class="text-muted">Opening balance cannot be changed after transactions have been recorded.</small>
+                            <input type="hidden" name="opening_balance" value="{{ account.opening_balance }}">
+                            {% endif %}
+                        </div>
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="accountDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="accountDescription" name="description" rows="2">{{ account.description }}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="accountStatus" class="form-label">Status</label>
-                        <select class="form-select" id="accountStatus" name="status">
-                            <option value="active" {% if account.status == 'active' %}selected{% endif %}>Active</option>
-                            <option value="inactive" {% if account.status == 'inactive' %}selected{% endif %}>Inactive</option>
-                        </select>
+                        <textarea class="form-control" id="accountDescription" name="description" rows="3">{{ account.description }}</textarea>
                     </div>
                 </div>
                 <div class="modal-footer">

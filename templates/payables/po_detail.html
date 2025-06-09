@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'payables:home' %}">Payables</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'payables:po_list' %}">Purchase Orders</a></li>
+                    <li class="breadcrumb-item active">{{ po.po_number }}</li>
+                </ol>
+            </nav>
+            <h1 class="h2">Purchase Order #{{ po.po_number }}</h1>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                {% if po.status != 'billed' %}
+                <a href="{% url 'payables:po_edit' po.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% endif %}
+                {% if po.status == 'draft' %}
+                <a href="{% url 'payables:po_send' po.id %}" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Send
+                </a>
+                {% endif %}
+                {% if po.status in 'sent,received' %}
+                <a href="{% url 'payables:po_convert_to_bill' po.id %}" class="btn btn-success">
+                    <i class="fas fa-exchange-alt"></i> Convert to Bill
+                </a>
+                {% endif %}
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        More
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="window.print()">
+                            <i class="fas fa-print"></i> Print
+                        </a></li>
+                        {% if po.status != 'billed' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'payables:po_delete' po.id %}">
+                            <i class="fas fa-trash"></i> Delete
+                        </a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- PO Details -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Purchase Order Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Vendor:</strong><br>
+                            <a href="{% url 'payables:vendor_detail' po.vendor.id %}">{{ po.vendor.company_name }}</a><br>
+                            {% if po.vendor.contact_person %}{{ po.vendor.contact_person }}<br>{% endif %}
+                            {% if po.vendor.email %}{{ po.vendor.email }}<br>{% endif %}
+                            {% if po.vendor.phone %}{{ po.vendor.phone }}{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>PO Date:</strong> {{ po.po_date }}<br>
+                            <strong>Status:</strong> 
+                            {% if po.status == 'draft' %}
+                                <span class="badge bg-secondary">Draft</span>
+                            {% elif po.status == 'sent' %}
+                                <span class="badge bg-primary">Sent</span>
+                            {% elif po.status == 'billed' %}
+                                <span class="badge bg-success">Billed</span>
+                            {% elif po.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}<br>
+                            {% if po.expected_delivery_date %}
+                            <strong>Expected Delivery:</strong> {{ po.expected_delivery_date }}<br>
+                            {% endif %}
+                            <strong>Created:</strong> {{ po.created_at|date:"M d, Y" }}
+                        </div>
+                    </div>
+
+                    {% if po.notes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <strong>Notes:</strong><br>
+                            <p class="text-muted">{{ po.notes|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="card mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Items</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item/Description</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Tax</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.item_name }}</strong>
+                                        {% if item.description %}
+                                        <br><small class="text-muted">{{ item.description }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">${{ item.unit_price|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        {% if item.tax_rate %}{{ item.tax_rate }}%{% else %}-{% endif %}
+                                    </td>
+                                    <td class="text-end">${{ item.line_total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="4" class="text-end">Subtotal:</th>
+                                    <th class="text-end">${{ po.subtotal|floatformat:2 }}</th>
+                                </tr>
+                                {% if po.discount_amount %}
+                                <tr>
+                                    <th colspan="4" class="text-end">Discount:</th>
+                                    <th class="text-end">-${{ po.discount_amount|floatformat:2 }}</th>
+                                </tr>
+                                {% endif %}
+                                {% if po.tax_amount %}
+                                <tr>
+                                    <th colspan="4" class="text-end">Tax:</th>
+                                    <th class="text-end">${{ po.tax_amount|floatformat:2 }}</th>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-primary">
+                                    <th colspan="4" class="text-end">Total:</th>
+                                    <th class="text-end">${{ po.total|floatformat:2 }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Status Info -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Status Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Current Status</label>
+                        <div>
+                            {% if po.status == 'draft' %}
+                                <span class="badge bg-secondary fs-6">Draft</span>
+                                <small class="d-block text-muted">PO is being prepared</small>
+                            {% elif po.status == 'sent' %}
+                                <span class="badge bg-primary fs-6">Sent</span>
+                                <small class="d-block text-muted">PO sent to vendor</small>
+                            {% elif po.status == 'billed' %}
+                                <span class="badge bg-success fs-6">Billed</span>
+                                <small class="d-block text-muted">Converted to bill</small>
+                            {% elif po.status == 'cancelled' %}
+                                <span class="badge bg-danger fs-6">Cancelled</span>
+                                <small class="d-block text-muted">PO was cancelled</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if po.expected_delivery_date %}
+                    <div class="mb-3">
+                        <label class="form-label">Expected Delivery</label>
+                        <div>{{ po.expected_delivery_date }}</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Total Amount</label>
+                        <div class="fs-4 fw-bold text-primary">${{ po.total|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            {% if po.status != 'billed' %}
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if po.status == 'draft' %}
+                    <a href="{% url 'payables:po_send' po.id %}" class="btn btn-primary btn-sm d-block mb-2">
+                        <i class="fas fa-paper-plane"></i> Send to Vendor
+                    </a>
+                    {% endif %}
+                    {% if po.status in 'sent,received' %}
+                    <a href="{% url 'payables:po_convert_to_bill' po.id %}" class="btn btn-success btn-sm d-block mb-2">
+                        <i class="fas fa-exchange-alt"></i> Convert to Bill
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'payables:po_edit' po.id %}" class="btn btn-outline-primary btn-sm d-block mb-2">
+                        <i class="fas fa-edit"></i> Edit PO
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm d-block">
+                        <i class="fas fa-print"></i> Print PO
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

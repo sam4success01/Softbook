@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+  .form-group label {
+    font-weight: 500;
+  }
+  .required-field label::after {
+    content: ' *';
+    color: #dc3545;
+  }
+  .payment-summary {
+    background-color: #f8f9fa;
+    border-left: 4px solid #28a745;
+    border-radius: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div>
+      <h1 class="h2">{{ title }}</h1>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'invoicing:home' %}">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'invoicing:invoice_list' %}">Invoices</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'invoicing:invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Record Payment</li>
+        </ol>
+      </nav>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-group me-2">
+        <a href="{% url 'invoicing:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-arrow-left"></i> Back to Invoice
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0">Payment Details</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" id="paymentForm">
+            {% csrf_token %}
+            
+            <div class="row">
+              <div class="col-md-6 mb-3 required-field">
+                <div class="form-group">
+                  <label for="{{ form.amount.id_for_label }}">Payment Amount</label>
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    {{ form.amount }}
+                  </div>
+                  {% if form.amount.errors %}
+                  <div class="text-danger">{{ form.amount.errors }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6 mb-3 required-field">
+                <div class="form-group">
+                  <label for="{{ form.payment_date.id_for_label }}">Payment Date</label>
+                  {{ form.payment_date }}
+                  {% if form.payment_date.errors %}
+                  <div class="text-danger">{{ form.payment_date.errors }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3 required-field">
+                <div class="form-group">
+                  <label for="{{ form.payment_method.id_for_label }}">Payment Method</label>
+                  {{ form.payment_method }}
+                  {% if form.payment_method.errors %}
+                  <div class="text-danger">{{ form.payment_method.errors }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="form-group">
+                  <label for="{{ form.reference_number.id_for_label }}">Reference Number</label>
+                  {{ form.reference_number }}
+                  {% if form.reference_number.errors %}
+                  <div class="text-danger">{{ form.reference_number.errors }}</div>
+                  {% endif %}
+                  <small class="form-text text-muted">e.g., Check number, transaction ID</small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <div class="form-group">
+                <label for="{{ form.notes.id_for_label }}">Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                <div class="text-danger">{{ form.notes.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+              <a href="{% url 'invoicing:invoice_detail' invoice.id %}" class="btn btn-secondary me-2">Cancel</a>
+              <button type="submit" class="btn btn-success">Record Payment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <!-- Invoice Summary -->
+      <div class="card shadow-sm mb-4 payment-summary">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0">Invoice Summary</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-6">Invoice Number:</dt>
+            <dd class="col-sm-6">{{ invoice.invoice_number }}</dd>
+            
+            <dt class="col-sm-6">Customer:</dt>
+            <dd class="col-sm-6">{{ invoice.customer }}</dd>
+            
+            <dt class="col-sm-6">Issue Date:</dt>
+            <dd class="col-sm-6">{{ invoice.issue_date|date:"M d, Y" }}</dd>
+            
+            <dt class="col-sm-6">Due Date:</dt>
+            <dd class="col-sm-6">{{ invoice.due_date|date:"M d, Y" }}</dd>
+            
+            <dt class="col-sm-6">Status:</dt>
+            <dd class="col-sm-6">
+              <span class="badge {% if invoice.status == 'paid' %}bg-success{% elif invoice.status == 'overdue' %}bg-danger{% elif invoice.status == 'draft' %}bg-secondary{% elif invoice.status == 'partially_paid' %}bg-info{% else %}bg-warning{% endif %}">
+                {{ invoice.get_status_display }}
+              </span>
+            </dd>
+          </dl>
+        </div>
+        <div class="card-footer bg-white">
+          <div class="row">
+            <div class="col-6 text-start">Total Amount:</div>
+            <div class="col-6 text-end fw-bold">${{ invoice.total|floatformat:2 }}</div>
+          </div>
+          <div class="row">
+            <div class="col-6 text-start">Amount Paid:</div>
+            <div class="col-6 text-end text-success">${{ invoice.amount_paid|floatformat:2 }}</div>
+          </div>
+          <div class="row border-top mt-2 pt-2">
+            <div class="col-6 text-start">Balance Due:</div>
+            <div class="col-6 text-end fw-bold text-danger">${{ invoice.balance_due|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Payment Tips -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0">Payment Tips</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-info-circle text-primary me-2"></i>
+              Recording a payment doesn't actually process a payment transaction, it only records that payment was received.
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check-circle text-success me-2"></i>
+              If the payment amount equals the balance due, the invoice will be marked as fully paid.
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-exclamation-circle text-warning me-2"></i>
+              If the payment amount is less than the balance due, the invoice will be marked as partially paid.
+            </li>
+            <li>
+              <i class="fas fa-question-circle text-info me-2"></i>
+              If you need to record multiple partial payments, you can do so by returning to the invoice detail page after each payment.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Pre-select the full balance due as the payment amount
+    const amountField = document.getElementById('{{ form.amount.id_for_label }}');
+    const balanceDue = {{ invoice.balance_due }};
+    
+    // Format amount to 2 decimal places when user leaves the field
+    amountField.addEventListener('blur', function() {
+      if (this.value) {
+        this.value = parseFloat(this.value).toFixed(2);
+      }
+    });
+    
+    // Validate payment amount is not greater than balance due
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+      const paymentAmount = parseFloat(amountField.value);
+      
+      if (paymentAmount > balanceDue) {
+        e.preventDefault();
+        alert('Payment amount cannot be greater than the balance due ($' + balanceDue.toFixed(2) + ')');
+      }
+    });
+  });
+</script>
+{% endblock %}

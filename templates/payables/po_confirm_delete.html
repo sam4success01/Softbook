@@ -1,0 +1,90 @@
+<!-- po_confirm_delete.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirm Purchase Order Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-warning"></i> Warning</h6>
+                        <p class="mb-0">
+                            You are about to permanently delete purchase order: 
+                            <strong>{{ po.po_number }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Purchase Order Information:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>PO Number:</strong> {{ po.po_number }}</li>
+                            <li><strong>Vendor:</strong> {{ po.vendor.company_name }}</li>
+                            <li><strong>Date:</strong> {{ po.po_date }}</li>
+                            <li><strong>Total:</strong> ${{ po.total|floatformat:2 }}</li>
+                            <li><strong>Status:</strong> {{ po.get_status_display }}</li>
+                            {% if po.expected_delivery_date %}
+                            <li><strong>Expected Delivery:</strong> {{ po.expected_delivery_date }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    {% if po.items.exists %}
+                    <div class="mb-3">
+                        <h6>Items ({{ po.items.count }}):</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in po.items.all %}
+                                    <tr>
+                                        <td>{{ item.item_name }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-end">${{ item.line_total|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-warning">
+                        <strong>This action cannot be undone.</strong> 
+                        All purchase order items and related data will be permanently deleted.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:po_detail' po.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Yes, Delete Purchase Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

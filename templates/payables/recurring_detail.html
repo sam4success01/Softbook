@@ -1,0 +1,378 @@
+<!-- recurring_detail.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'payables:home' %}">Payables</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'payables:recurring_list' %}">Recurring Bills</a></li>
+                    <li class="breadcrumb-item active">{{ recurring.name }}</li>
+                </ol>
+            </nav>
+            <h1 class="h2">{{ recurring.name }}</h1>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <a href="{% url 'payables:recurring_edit' recurring.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% if recurring.is_active %}
+                <a href="{% url 'payables:recurring_create_bill' recurring.id %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Bill Now
+                </a>
+                {% endif %}
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        More
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item text-danger" href="{% url 'payables:recurring_delete' recurring.id %}">
+                            <i class="fas fa-trash"></i> Delete
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-md-8">
+            <!-- Basic Information -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Recurring Bill Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Vendor</label>
+                                <div>
+                                    <a href="{% url 'payables:vendor_detail' recurring.vendor.id %}" class="fw-bold">
+                                        {{ recurring.vendor.company_name }}
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Amount</label>
+                                <div class="fs-4 fw-bold text-primary">${{ recurring.amount|floatformat:2 }}</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Category</label>
+                                <div>{{ recurring.category.name }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Frequency</label>
+                                <div>
+                                    <span class="badge bg-secondary fs-6">{{ recurring.get_frequency_display }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Status</label>
+                                <div>
+                                    {% if recurring.is_active %}
+                                        <span class="badge bg-success fs-6">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6">Inactive</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Date Range</label>
+                                <div>
+                                    <strong>Start:</strong> {{ recurring.start_date }}<br>
+                                    <strong>End:</strong> {{ recurring.end_date|default:"Ongoing" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if recurring.description %}
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Description</label>
+                                <div>{{ recurring.description|linebreaks }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Generated Bills -->
+            <div class="card mt-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Generated Bills</h5>
+                    <small class="text-muted">{{ bills.count }} total bills created</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if bills %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Bill Number</th>
+                                    <th>Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bill in bills %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'payables:bill_detail' bill.id %}">{{ bill.bill_number }}</a>
+                                    </td>
+                                    <td>{{ bill.bill_date }}</td>
+                                    <td>{{ bill.due_date }}</td>
+                                    <td>
+                                        {% if bill.status == 'paid' %}
+                                            <span class="badge bg-success">Paid</span>
+                                        {% elif bill.status == 'overdue' %}
+                                            <span class="badge bg-danger">Overdue</span>
+                                        {% elif bill.status == 'open' %}
+                                            <span class="badge bg-warning">Open</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ bill.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ bill.total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Show More Bills Link if there are more than 10 -->
+                    {% if bills.count > 10 %}
+                    <div class="card-footer bg-light text-center">
+                        <a href="{% url 'payables:bill_list' %}?vendor={{ recurring.vendor.id }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye"></i> View All Bills from {{ recurring.vendor.company_name }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-invoice fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No bills have been generated from this template yet.</p>
+                        {% if recurring.is_active %}
+                        <a href="{% url 'payables:recurring_create_bill' recurring.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Create First Bill
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Next Bill Info -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Next Bill Schedule</h6>
+                </div>
+                <div class="card-body">
+                    {% if recurring.is_active %}
+                        {% if recurring.next_bill_date %}
+                        <div class="text-center">
+                            <div class="fs-4 fw-bold {% if recurring.next_bill_date <= today %}text-danger{% else %}text-primary{% endif %}">
+                                {{ recurring.next_bill_date }}
+                            </div>
+                            {% if recurring.next_bill_date <= today %}
+                                <div class="text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> Due now!
+                                </div>
+                                <a href="{% url 'payables:recurring_create_bill' recurring.id %}" 
+                                   class="btn btn-danger btn-sm mt-2">
+                                    Create Bill Now
+                                </a>
+                            {% else %}
+                                <div class="text-muted">Next bill due</div>
+                                {% with days_until=recurring.next_bill_date|timeuntil %}
+                                    {% if days_until %}
+                                    <small class="text-muted d-block">in {{ days_until }}</small>
+                                    {% endif %}
+                                {% endwith %}
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                            <p>No next bill scheduled</p>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-pause-circle fa-2x mb-2"></i>
+                        <p>Inactive - No bills will be generated</p>
+                        <small>Activate this recurring bill to resume automatic scheduling</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ bills.count }}</h4>
+                                <small class="text-muted">Bills Created</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            {% with total_amount=bills|sum_field:"total" %}
+                            <h4 class="text-success">${{ total_amount|default:0|floatformat:2 }}</h4>
+                            {% endwith %}
+                            <small class="text-muted">Total Amount</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Bill Status Breakdown -->
+                    {% if bills %}
+                    <hr>
+                    <div class="small">
+                        <div class="d-flex justify-content-between">
+                            <span>Paid:</span>
+                            <span class="text-success">{{ bills|filter_status:"paid"|length }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Open:</span>
+                            <span class="text-warning">{{ bills|filter_status:"open"|length }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Overdue:</span>
+                            <span class="text-danger">{{ bills|filter_status:"overdue"|length }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if recurring.is_active %}
+                    <a href="{% url 'payables:recurring_create_bill' recurring.id %}" 
+                       class="btn btn-primary btn-sm d-block mb-2">
+                        <i class="fas fa-plus"></i> Create Bill Now
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'payables:recurring_edit' recurring.id %}" 
+                       class="btn btn-outline-primary btn-sm d-block mb-2">
+                        <i class="fas fa-edit"></i> Edit Template
+                    </a>
+                    <a href="{% url 'payables:vendor_detail' recurring.vendor.id %}" 
+                       class="btn btn-outline-secondary btn-sm d-block mb-2">
+                        <i class="fas fa-building"></i> View Vendor
+                    </a>
+                    {% if recurring.is_active %}
+                    <button class="btn btn-outline-warning btn-sm d-block mb-2" onclick="toggleRecurringStatus(false)">
+                        <i class="fas fa-pause"></i> Deactivate
+                    </button>
+                    {% else %}
+                    <button class="btn btn-outline-success btn-sm d-block mb-2" onclick="toggleRecurringStatus(true)">
+                        <i class="fas fa-play"></i> Activate
+                    </button>
+                    {% endif %}
+                    
+                    <!-- Copy Template -->
+                    <a href="{% url 'payables:recurring_create' %}?copy={{ recurring.id }}" 
+                       class="btn btn-outline-info btn-sm d-block">
+                        <i class="fas fa-copy"></i> Copy Template
+                    </a>
+                </div>
+            </div>
+
+            <!-- History Summary -->
+            {% if bills %}
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Recent Activity</h6>
+                </div>
+                <div class="card-body">
+                    {% with latest_bill=bills|first %}
+                    <div class="small">
+                        <div class="mb-2">
+                            <strong>Last Bill Created:</strong><br>
+                            <a href="{% url 'payables:bill_detail' latest_bill.id %}" class="text-decoration-none">
+                                {{ latest_bill.bill_number }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ latest_bill.bill_date }}</small>
+                        </div>
+                        
+                        {% with avg_amount=bills|avg_field:"total" %}
+                        {% if avg_amount %}
+                        <div class="mb-2">
+                            <strong>Average Bill Amount:</strong><br>
+                            ${{ avg_amount|floatformat:2 }}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                        
+                        <div>
+                            <strong>Created:</strong><br>
+                            {{ recurring.created_at|date:"M d, Y" }}
+                            <br>
+                            <small class="text-muted">by {{ recurring.created_by.get_full_name|default:recurring.created_by.username }}</small>
+                        </div>
+                    </div>
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleRecurringStatus(activate) {
+    const action = activate ? 'activate' : 'deactivate';
+    const message = activate ? 
+        'This will resume automatic bill generation for this template.' : 
+        'This will stop automatic bill generation. You can still create bills manually.';
+    
+    if (confirm(`Are you sure you want to ${action} this recurring bill?\n\n${message}`)) {
+        // In a real implementation, you would make an AJAX call to update the status
+        // For now, we'll redirect to the edit page
+        window.location.href = "{% url 'payables:recurring_edit' recurring.id %}";
+    }
+}
+
+// Add tooltips to badges and status indicators
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

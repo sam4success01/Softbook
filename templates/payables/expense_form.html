@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ title }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% if is_edit %}{% url 'payables:expense_detail' expense.id %}{% else %}{% url 'payables:expense_list' %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- Expense Details -->
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Expense Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.vendor.id_for_label }}" class="font-weight-bold">Vendor</label>
+                                    {{ form.vendor }}
+                                    {% if form.vendor.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.vendor.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.expense_date.id_for_label }}" class="font-weight-bold">Expense Date *</label>
+                                    {{ form.expense_date }}
+                                    {% if form.expense_date.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.expense_date.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.category.id_for_label }}" class="font-weight-bold">Category *</label>
+                                    {{ form.category }}
+                                    {% if form.category.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.category.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.payment_mode.id_for_label }}" class="font-weight-bold">Payment Mode *</label>
+                                    {{ form.payment_mode }}
+                                    {% if form.payment_mode.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.payment_mode.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.amount.id_for_label }}" class="font-weight-bold">Amount *</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">$</span>
+                                        </div>
+                                        {{ form.amount }}
+                                    </div>
+                                    {% if form.amount.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.amount.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.tax_amount.id_for_label }}" class="font-weight-bold">Tax Amount</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">$</span>
+                                        </div>
+                                        {{ form.tax_amount }}
+                                    </div>
+                                    {% if form.tax_amount.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.tax_amount.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Total Amount</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">$</span>
+                                        </div>
+                                        <input type="text" class="form-control" id="total-amount" readonly value="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.reference_number.id_for_label }}" class="font-weight-bold">Reference Number</label>
+                            {{ form.reference_number }}
+                            {% if form.reference_number.errors %}
+                            <div class="invalid-feedback d-block">{{ form.reference_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="font-weight-bold">Description *</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.receipt.id_for_label }}" class="font-weight-bold">Receipt/Attachment</label>
+                            {{ form.receipt }}
+                            {% if form.receipt.errors %}
+                            <div class="invalid-feedback d-block">{{ form.receipt.errors }}</div>
+                            {% endif %}
+                            {% if expense.receipt %}
+                            <small class="form-text text-muted">
+                                Current: <a href="{{ expense.receipt.url }}" target="_blank">{{ expense.receipt.name }}</a>
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Options -->
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Additional Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <div class="custom-control custom-checkbox">
+                                {{ form.is_billable }}
+                                <label class="custom-control-label font-weight-bold" for="{{ form.is_billable.id_for_label }}">
+                                    Billable to Customer
+                                </label>
+                            </div>
+                            {% if form.is_billable.errors %}
+                            <div class="invalid-feedback d-block">{{ form.is_billable.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group mb-3" id="customer-group" style="display: none;">
+                            <label for="{{ form.customer.id_for_label }}" class="font-weight-bold">Customer</label>
+                            {{ form.customer }}
+                            {% if form.customer.errors %}
+                            <div class="invalid-feedback d-block">{{ form.customer.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="font-weight-bold">Status</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}" class="font-weight-bold">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Summary -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td>Amount:</td>
+                                <td class="text-right">$<span id="summary-amount">0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td>Tax:</td>
+                                <td class="text-right">$<span id="summary-tax">0.00</span></td>
+                            </tr>
+                            <tr class="border-top font-weight-bold">
+                                <td>Total:</td>
+                                <td class="text-right">$<span id="summary-total">0.00</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="d-flex justify-content-end mb-5">
+            <a href="{% if is_edit %}{% url 'payables:expense_detail' expense.id %}{% else %}{% url 'payables:expense_list' %}{% endif %}" class="btn btn-secondary me-2">Cancel</a>
+            
+            {% if not is_edit %}
+            <button type="submit" name="save_and_new" class="btn btn-outline-primary me-2">Save & New</button>
+            {% endif %}
+            
+            <button type="submit" name="save" class="btn btn-primary">
+                {% if is_edit %}Update{% else %}Save{% endif %} Expense
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate total amount
+    const amountField = document.getElementById('{{ form.amount.id_for_label }}');
+    const taxField = document.getElementById('{{ form.tax_amount.id_for_label }}');
+    const totalField = document.getElementById('total-amount');
+    const summaryAmount = document.getElementById('summary-amount');
+    const summaryTax = document.getElementById('summary-tax');
+    const summaryTotal = document.getElementById('summary-total');
+    
+    function calculateTotal() {
+        const amount = parseFloat(amountField.value) || 0;
+        const tax = parseFloat(taxField.value) || 0;
+        const total = amount + tax;
+        
+        totalField.value = total.toFixed(2);
+        summaryAmount.textContent = amount.toFixed(2);
+        summaryTax.textContent = tax.toFixed(2);
+        summaryTotal.textContent = total.toFixed(2);
+    }
+    
+    amountField.addEventListener('input', calculateTotal);
+    taxField.addEventListener('input', calculateTotal);
+    
+    // Show/hide customer field based on billable checkbox
+    const billableCheckbox = document.getElementById('{{ form.is_billable.id_for_label }}');
+    const customerGroup = document.getElementById('customer-group');
+    
+    function toggleCustomerField() {
+        if (billableCheckbox.checked) {
+            customerGroup.style.display = 'block';
+        } else {
+            customerGroup.style.display = 'none';
+        }
+    }
+    
+    billableCheckbox.addEventListener('change', toggleCustomerField);
+    
+    // Initial calculations and visibility
+    calculateTotal();
+    toggleCustomerField();
+});
+</script>
+{% endblock %}

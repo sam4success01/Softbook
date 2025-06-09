@@ -1,0 +1,61 @@
+<!-- vendor_confirm_delete.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirm Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-warning"></i> Warning</h6>
+                        <p class="mb-0">
+                            You are about to permanently delete the vendor: 
+                            <strong>{{ vendor.company_name }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Vendor Information:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Company:</strong> {{ vendor.company_name }}</li>
+                            {% if vendor.contact_person %}
+                            <li><strong>Contact:</strong> {{ vendor.contact_person }}</li>
+                            {% endif %}
+                            {% if vendor.email %}
+                            <li><strong>Email:</strong> {{ vendor.email }}</li>
+                            {% endif %}
+                            <li><strong>Created:</strong> {{ vendor.created_at|date:"M d, Y" }}</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>This action cannot be undone.</strong> 
+                        Make sure this vendor has no related bills, expenses, or payments before deleting.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:vendor_detail' vendor.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Yes, Delete Vendor
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

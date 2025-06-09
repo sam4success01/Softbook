@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Customer Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Customer Analysis</h1>
+            <p class="text-muted">Analyze customer spending patterns and identify your top customers</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'invoicing:reports' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="col-md-3 form-group">
+                    <label for="period">Time Period</label>
+                    <select name="period" id="period" class="form-control">
+                        <option value="this_month" {% if request.GET.period == 'this_month' %}selected{% endif %}>This Month</option>
+                        <option value="last_month" {% if request.GET.period == 'last_month' %}selected{% endif %}>Last Month</option>
+                        <option value="this_quarter" {% if request.GET.period == 'this_quarter' %}selected{% endif %}>This Quarter</option>
+                        <option value="last_quarter" {% if request.GET.period == 'last_quarter' %}selected{% endif %}>Last Quarter</option>
+                        <option value="this_year" {% if request.GET.period == 'this_year' %}selected{% endif %}>This Year</option>
+                        <option value="last_year" {% if request.GET.period == 'last_year' %}selected{% endif %}>Last Year</option>
+                        <option value="custom" {% if request.GET.period == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group" id="startDateGroup" {% if request.GET.period != 'custom' and not request.GET.start_date %}style="display: none;"{% endif %}>
+                    <label for="start_date">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" 
+                           value="{{ request.GET.start_date|default:default_start_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group" id="endDateGroup" {% if request.GET.period != 'custom' and not request.GET.end_date %}style="display: none;"{% endif %}>
+                    <label for="end_date">End Date</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" 
+                           value="{{ request.GET.end_date|default:default_end_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="min_revenue">Minimum Revenue</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text">$</span>
+                        </div>
+                        <input type="number" name="min_revenue" id="min_revenue" class="form-control" 
+                               value="{{ request.GET.min_revenue|default:'' }}" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="customer_type">Customer Type</label>
+                    <select name="customer_type" id="customer_type" class="form-control">
+                        <option value="" {% if not request.GET.customer_type %}selected{% endif %}>All Types</option>
+                        <option value="business" {% if request.GET.customer_type == 'business' %}selected{% endif %}>Business</option>
+                        <option value="individual" {% if request.GET.customer_type == 'individual' %}selected{% endif %}>Individual</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="sort_by">Sort By</label>
+                    <select name="sort_by" id="sort_by" class="form-control">
+                        <option value="revenue" {% if request.GET.sort_by == 'revenue' or not request.GET.sort_by %}selected{% endif %}>Revenue (High to Low)</option>
+                        <option value="invoice_count" {% if request.GET.sort_by == 'invoice_count' %}selected{% endif %}>Invoice Count</option>
+                        <option value="avg_invoice" {% if request.GET.sort_by == 'avg_invoice' %}selected{% endif %}>Average Invoice Value</option>
+                        <option value="recency" {% if request.GET.sort_by == 'recency' %}selected{% endif %}>Most Recent Purchase</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6 form-group d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'invoicing:customer_analysis' %}" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Top Customers by Revenue</h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if customer_data %}
+                    <div style="height: 400px">
+                        <canvas id="customerChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-tag fa-3x text-muted mb-3"></i>
+                        <h5>No customer data found</h5>
+                        <p class="text-muted">Adjust your filters or create some invoices to see customer data</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Total Revenue</h6>
+                                    <h3 class="mb-0">${{ total_revenue|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Active Customers</h6>
+                                    <h3 class="mb-0">{{ active_customers }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Average Revenue per Customer</h6>
+                                    <h3 class="mb-0">${{ avg_revenue_per_customer|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Top 20% Revenue</h6>
+                                    <h3 class="mb-0">${{ top_20_percent_revenue|floatformat:2 }}</h3>
+                                    <small>{{ top_20_percent_count }} customers ({{ top_20_percent_percentage|floatformat:1 }}% of total)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Customer Details</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if customer_data %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Type</th>
+                            <th class="text-right">Revenue</th>
+                            <th class="text-right">% of Total</th>
+                            <th class="text-right">Invoices</th>
+                            <th class="text-right">Avg. Invoice</th>
+                            <th>Last Purchase</th>
+                            <th>First Purchase</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customer_data %}
+                        <tr>
+                            <td>
+                                {% if customer.company_name %}
+                                    {{ customer.company_name }}
+                                {% else %}
+                                    {{ customer.name }}
+                                {% endif %}
+                            </td>
+                            <td>{{ customer.customer_type|title }}</td>
+                            <td class="text-right">${{ customer.revenue|floatformat:2 }}</td>
+                            <td class="text-right">{{ customer.percentage|floatformat:1 }}%</td>
+                            <td class="text-right">{{ customer.invoice_count }}</td>
+                            <td class="text-right">${{ customer.avg_invoice|floatformat:2 }}</td>
+                            <td>{{ customer.last_purchase|default:"-" }}</td>
+                            <td>{{ customer.first_purchase|default:"-" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'invoicing:customer_detail' customer.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-user"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No customer data available for the selected criteria</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if customer_data %}
+    <div class="card mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Customer Segments</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Customer Type Distribution</h6>
+                    <div style="height: 250px">
+                        <canvas id="customerTypeChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Pareto Analysis (80/20 Rule)</h6>
+                    <div style="height: 250px">
+                        <canvas id="paretoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle custom date inputs when period changes
+        const periodSelect = document.getElementById('period');
+        const startDateGroup = document.getElementById('startDateGroup');
+        const endDateGroup = document.getElementById('endDateGroup');
+        
+        periodSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                startDateGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+            } else {
+                startDateGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+            }
+        });
+        
+        // Initialize charts if data is available
+        {% if customer_data %}
+        
+        // Top Customers Chart
+        var customerCtx = document.getElementById('customerChart').getContext('2d');
+        var customerChart = new Chart(customerCtx, {
+            type: 'horizontalBar',
+            data: {
+                labels: [
+                    {% for customer in customer_data|slice:":10" %}
+                    '{% if customer.company_name %}{{ customer.company_name }}{% else %}{{ customer.name }}{% endif %}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: [
+                        {% for customer in customer_data|slice:":10" %}
+                        {{ customer.revenue }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    xAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+                            callback: function(value, index, values) {
+                                return '$' + value;
+                            }
+                        }
+                    }]
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            return 'Revenue: $' + Number(tooltipItem.xLabel).toFixed(2);
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Customer Type Distribution Chart
+        var typeCtx = document.getElementById('customerTypeChart').getContext('2d');
+        var typeChart = new Chart(typeCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Business', 'Individual'],
+                datasets: [{
+                    data: [
+                        {{ business_revenue }},
+                        {{ individual_revenue }}
+                    ],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 99, 132, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var value = data.datasets[0].data[tooltipItem.index];
+                            var total = data.datasets[0].data.reduce(function(a, b) {
+                                return a + b;
+                            }, 0);
+                            var percentage = Math.round((value / total) * 100);
+                            return data.labels[tooltipItem.index] + ': $' + value.toFixed(2) + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Pareto Chart
+        var paretoCtx = document.getElementById('paretoChart').getContext('2d');
+        var paretoChart = new Chart(paretoCtx, {
+            type: 'line',
+            data: {
+                labels: [
+                    {% for segment in pareto_data %}
+                    '{{ segment.label }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    type: 'bar',
+                    label: 'Revenue by Segment',
+                    data: [
+                        {% for segment in pareto_data %}
+                        {{ segment.revenue }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y-axis-1'
+                }, {
+                    type: 'line',
+                    label: 'Cumulative Percentage',
+                    data: [
+                        {% for segment in pareto_data %}
+                        {{ segment.cumulative_percentage }},
+                        {% endfor %}
+                    ],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    yAxisID: 'y-axis-2'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        id: 'y-axis-1',
+                        type: 'linear',
+                        position: 'left',
+                        ticks: {
+                            beginAtZero: true,
+                            callback: function(value, index, values) {
+                                return '$' + value;
+                            }
+                        }
+                    }, {
+                        id: 'y-axis-2',
+                        type: 'linear',
+                        position: 'right',
+                        ticks: {
+                            beginAtZero: true,
+                            max: 100,
+                            callback: function(value, index, values) {
+                                return value + '%';
+                            }
+                        },
+                        gridLines: {
+                            drawOnChartArea: false
+                        }
+                    }]
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var datasetLabel = data.datasets[tooltipItem.datasetIndex].label;
+                            var value = tooltipItem.value;
+                            if (tooltipItem.datasetIndex === 0) {
+                                return datasetLabel + ': $' + Number(value).toFixed(2);
+                            } else {
+                                return datasetLabel + ': ' + Number(value).toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

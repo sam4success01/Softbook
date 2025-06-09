@@ -1,0 +1,69 @@
+<!-- recurring_confirm_delete.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirm Recurring Bill Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-warning"></i> Warning</h6>
+                        <p class="mb-0">
+                            You are about to permanently delete recurring bill template: 
+                            <strong>{{ recurring.name }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Recurring Bill Information:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Name:</strong> {{ recurring.name }}</li>
+                            <li><strong>Vendor:</strong> {{ recurring.vendor.company_name }}</li>
+                            <li><strong>Amount:</strong> ${{ recurring.amount|floatformat:2 }}</li>
+                            <li><strong>Frequency:</strong> {{ recurring.get_frequency_display }}</li>
+                            <li><strong>Category:</strong> {{ recurring.category.name }}</li>
+                            <li><strong>Status:</strong> {{ recurring.is_active|yesno:"Active,Inactive" }}</li>
+                            {% if recurring.next_bill_date %}
+                            <li><strong>Next Bill Date:</strong> {{ recurring.next_bill_date }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    {% if recurring.description %}
+                    <div class="mb-3">
+                        <h6>Description:</h6>
+                        <p class="text-muted">{{ recurring.description }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-warning">
+                        <strong>This action cannot be undone.</strong> 
+                        The recurring bill template will be permanently deleted. Bills already generated from this template will not be affected.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:recurring_detail' recurring.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Yes, Delete Recurring Bill
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

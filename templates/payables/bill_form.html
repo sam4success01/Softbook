@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+    .delete-row {
+        color: #dc3545;
+        cursor: pointer;
+    }
+    .item-row:hover {
+        background-color: #f8f9fa;
+    }
+    .subtotal-row {
+        border-top: 2px solid #dee2e6;
+    }
+    .total-row {
+        font-weight: bold;
+        border-top: 2px solid #dee2e6;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .form-group label {
+        font-weight: 500;
+    }
+    .required-field label::after {
+        content: ' *';
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ title }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% if is_edit %}{% url 'payables:bill_detail' bill.id %}{% else %}{% url 'payables:bill_list' %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="billForm" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row mb-4">
+            <!-- Bill Details -->
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">Bill Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 form-group required-field mb-3">
+                                <label for="{{ form.vendor.id_for_label }}">Vendor</label>
+                                <div class="input-group">
+                                    {{ form.vendor }}
+                                    <a href="{% url 'payables:vendor_create' %}" class="btn btn-outline-secondary" target="_blank">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                </div>
+                                {% if form.vendor.errors %}
+                                <div class="text-danger">{{ form.vendor.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="{{ form.vendor_bill_number.id_for_label }}">Vendor Bill Number</label>
+                                {{ form.vendor_bill_number }}
+                                {% if form.vendor_bill_number.errors %}
+                                <div class="text-danger">{{ form.vendor_bill_number.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group required-field mb-3">
+                                <label for="{{ form.bill_date.id_for_label }}">Bill Date</label>
+                                {{ form.bill_date }}
+                                {% if form.bill_date.errors %}
+                                <div class="text-danger">{{ form.bill_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 form-group required-field mb-3">
+                                <label for="{{ form.due_date.id_for_label }}">Due Date</label>
+                                {{ form.due_date }}
+                                {% if form.due_date.errors %}
+                                <div class="text-danger">{{ form.due_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="{{ form.status.id_for_label }}">Status</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                <div class="text-danger">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="{{ form.attachment.id_for_label }}">Attachment</label>
+                                {{ form.attachment }}
+                                {% if form.attachment.errors %}
+                                <div class="text-danger">{{ form.attachment.errors }}</div>
+                                {% endif %}
+                                {% if bill.attachment %}
+                                <small class="form-text text-muted">
+                                    Current: <a href="{{ bill.attachment.url }}" target="_blank">{{ bill.attachment.name }}</a>
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">Additional Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Items</h5>
+            </div>
+            <div class="card-body">
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table" id="items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Category</th>
+                                <th style="width: 35%;">Description</th>
+                                <th style="width: 10%;">Quantity</th>
+                                <th style="width: 10%;">Unit Price</th>
+                                <th style="width: 10%;">Tax Rate (%)</th>
+                                <th style="width: 10%;">Total</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="item-rows">
+                            {% for item_form in formset %}
+                                <tr class="item-row">
+                                    <td>
+                                        {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+                                        {{ item_form.expense_category }}
+                                        {% if item_form.expense_category.errors %}<div class="text-danger">{{ item_form.expense_category.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ item_form.description }}
+                                        {% if item_form.description.errors %}<div class="text-danger">{{ item_form.description.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ item_form.quantity }}
+                                        {% if item_form.quantity.errors %}<div class="text-danger">{{ item_form.quantity.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ item_form.unit_price }}
+                                        {% if item_form.unit_price.errors %}<div class="text-danger">{{ item_form.unit_price.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ item_form.tax_rate }}
+                                        {% if item_form.tax_rate.errors %}<div class="text-danger">{{ item_form.tax_rate.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="line-total">$0.00</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="delete-row"><i class="fas fa-trash"></i></span>
+                                        <div style="display: none;">{{ item_form.DELETE }}</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="7">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="add-item">
+                                        <i class="fas fa-plus"></i> Add Item
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="subtotal-row">
+                                <td colspan="5" class="text-end">Subtotal:</td>
+                                <td id="subtotal-amount" class="text-start">$0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="text-end">Tax:</td>
+                                <td id="tax-amount" class="text-start">$0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="text-end">Discount:</td>
+                                <td class="text-start">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">$</span>
+                                        {{ form.discount_amount }}
+                                    </div>
+                                </td>
+                                <td></td>
+                            </tr>
+                            <tr class="total-row">
+                                <td colspan="5" class="text-end">Total:</td>
+                                <td id="total-amount" class="text-start">$0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="d-flex justify-content-end mb-5">
+            <a href="{% if is_edit %}{% url 'payables:bill_detail' bill.id %}{% else %}{% url 'payables:bill_list' %}{% endif %}" class="btn btn-secondary me-2">Cancel</a>
+            
+            {% if not is_edit %}
+            <button type="submit" name="save_and_new" class="btn btn-outline-primary me-2">Save & New</button>
+            {% endif %}
+            
+            <button type="submit" name="save" class="btn btn-primary">
+                {% if is_edit %}Update{% else %}Save{% endif %} Bill
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Categories data
+    const categories = {{ categories|safe }};
+    
+    // Set due date when vendor changes
+    document.getElementById('{{ form.vendor.id_for_label }}').addEventListener('change', function() {
+        // You can add logic here to set due date based on vendor payment terms
+    });
+    
+    // Function to calculate line total
+    function calculateLineTotal(row) {
+        const quantity = parseFloat(row.querySelector('[name$="-quantity"]').value) || 0;
+        const unitPrice = parseFloat(row.querySelector('[name$="-unit_price"]').value) || 0;
+        const taxRate = parseFloat(row.querySelector('[name$="-tax_rate"]').value) || 0;
+        
+        const lineTotal = quantity * unitPrice;
+        row.querySelector('.line-total').textContent = '$' + lineTotal.toFixed(2);
+        
+        return {
+            lineTotal: lineTotal,
+            taxAmount: lineTotal * (taxRate / 100)
+        };
+    }
+    
+    // Function to update all totals
+    function updateTotals() {
+        let subtotal = 0;
+        let taxTotal = 0;
+        
+        document.querySelectorAll('.item-row').forEach(row => {
+            if (row.style.display !== 'none' && !row.querySelector('[name$="-DELETE"]').checked) {
+                const amounts = calculateLineTotal(row);
+                subtotal += amounts.lineTotal;
+                taxTotal += amounts.taxAmount;
+            }
+        });
+        
+        const discountAmount = parseFloat(document.getElementById('id_discount_amount').value) || 0;
+        const total = subtotal + taxTotal - discountAmount;
+        
+        document.getElementById('subtotal-amount').textContent = '$' + subtotal.toFixed(2);
+        document.getElementById('tax-amount').textContent = '$' + taxTotal.toFixed(2);
+        document.getElementById('total-amount').textContent = '$' + total.toFixed(2);
+    }
+    
+    // Event listeners for calculation fields
+    document.getElementById('items-table').addEventListener('input', function(e) {
+        if (e.target.hasAttribute('data-calc')) {
+            updateTotals();
+        }
+    });
+    
+    // Handle discount amount changes
+    document.getElementById('id_discount_amount').addEventListener('input', updateTotals);
+    
+    // Function to setup delete row functionality
+    function setupDeleteRow(deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const deleteCheckbox = row.querySelector('[name$="-DELETE"]');
+            
+            const visibleRows = Array.from(document.querySelectorAll('.item-row')).filter(r => r.style.display !== 'none');
+            
+            if (visibleRows.length > 1) {
+                row.style.display = 'none';
+                deleteCheckbox.checked = true;
+                updateTotals();
+            } else {
+                alert('You cannot delete all rows. At least one item is required.');
+            }
+        });
+    }
+    
+    // Setup existing delete buttons
+    document.querySelectorAll('.delete-row').forEach(setupDeleteRow);
+    
+    // Handle add item button
+    document.getElementById('add-item').addEventListener('click', function() {
+        const tbody = document.getElementById('item-rows');
+        const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
+        const currentFormCount = parseInt(totalFormsInput.value);
+        
+        // Find a row to clone
+        const templateRow = tbody.querySelector('.item-row');
+        const newRow = templateRow.cloneNode(true);
+        
+        // Update all form field names and IDs
+        newRow.querySelectorAll('input, select, textarea').forEach(field => {
+            const oldName = field.name;
+            const oldId = field.id;
+            
+            if (oldName) {
+                field.name = oldName.replace(/items-\d+-/, `items-${currentFormCount}-`);
+            }
+            
+            if (oldId) {
+                field.id = oldId.replace(/items-\d+-/, `items-${currentFormCount}-`);
+            }
+            
+            // Clear values
+            if (field.type !== 'hidden' && field.type !== 'checkbox') {
+                if (field.name && field.name.endsWith('-quantity')) {
+                    field.value = '1';
+                } else if (field.name && field.name.endsWith('-tax_rate')) {
+                    field.value = '0';
+                } else {
+                    field.value = '';
+                }
+            }
+            
+            // Uncheck DELETE checkbox
+            if (field.type === 'checkbox' && field.name && field.name.endsWith('-DELETE')) {
+                field.checked = false;
+            }
+        });
+        
+        // Reset line total
+        newRow.querySelector('.line-total').textContent = '$0.00';
+        newRow.style.display = '';
+        
+        // Add the new row
+        tbody.appendChild(newRow);
+        
+        // Setup delete button for the new row
+        setupDeleteRow(newRow.querySelector('.delete-row'));
+        
+        // Update the TOTAL_FORMS count
+        totalFormsInput.value = currentFormCount + 1;
+        
+        // Update totals
+        updateTotals();
+    });
+    
+    // Initial totals calculation
+    updateTotals();
+});
+</script>
+{% endblock %}

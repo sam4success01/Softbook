@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Aging Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Aging Report</h1>
+            <p class="text-muted">Track overdue invoices and customer payment patterns</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'invoicing:reports' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="col-md-3 form-group">
+                    <label for="customer">Customer</label>
+                    <select name="customer" id="customer" class="form-control">
+                        <option value="">All Customers</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if request.GET.customer == customer.id|stringformat:"i" %}selected{% endif %}>
+                            {{ customer }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="as_of_date">As of Date</label>
+                    <input type="date" name="as_of_date" id="as_of_date" class="form-control" 
+                           value="{{ request.GET.as_of_date|default:today_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="min_amount">Minimum Amount</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text">$</span>
+                        </div>
+                        <input type="number" name="min_amount" id="min_amount" class="form-control" 
+                               value="{{ request.GET.min_amount|default:'' }}" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="col-md-3 form-group d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'invoicing:aging_report' %}" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Outstanding Invoices</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if aging_data %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Invoice #</th>
+                            <th>Issue Date</th>
+                            <th>Due Date</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Balance Due</th>
+                            <th class="text-right">Current</th>
+                            <th class="text-right">1-30 Days</th>
+                            <th class="text-right">31-60 Days</th>
+                            <th class="text-right">61-90 Days</th>
+                            <th class="text-right">Over 90 Days</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in aging_data %}
+                        <tr>
+                            <td>{{ item.customer }}</td>
+                            <td>
+                                <a href="{% url 'invoicing:invoice_detail' item.invoice.id %}">
+                                    {{ item.invoice.invoice_number }}
+                                </a>
+                            </td>
+                            <td>{{ item.invoice.issue_date }}</td>
+                            <td>{{ item.invoice.due_date }}</td>
+                            <td class="text-right">${{ item.invoice.total|floatformat:2 }}</td>
+                            <td class="text-right">${{ item.invoice.balance_due|floatformat:2 }}</td>
+                            <td class="text-right">
+                                {% if item.current > 0 %}${{ item.current|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-right">
+                                {% if item.days_1_30 > 0 %}${{ item.days_1_30|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-right">
+                                {% if item.days_31_60 > 0 %}${{ item.days_31_60|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-right">
+                                {% if item.days_61_90 > 0 %}${{ item.days_61_90|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                            <td class="text-right">
+                                {% if item.days_over_90 > 0 %}${{ item.days_over_90|floatformat:2 }}{% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="font-weight-bold">
+                        <tr>
+                            <td colspan="5" class="text-right">Totals:</td>
+                            <td class="text-right">${{ totals.balance_due|floatformat:2 }}</td>
+                            <td class="text-right">${{ totals.current|floatformat:2 }}</td>
+                            <td class="text-right">${{ totals.days_1_30|floatformat:2 }}</td>
+                            <td class="text-right">${{ totals.days_31_60|floatformat:2 }}</td>
+                            <td class="text-right">${{ totals.days_61_90|floatformat:2 }}</td>
+                            <td class="text-right">${{ totals.days_over_90|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-hourglass fa-3x text-muted mb-3"></i>
+                <h5>No outstanding invoices found</h5>
+                <p class="text-muted">All invoices have been paid or no invoices match your filter criteria</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if aging_data %}
+    <div class="card mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Summary by Customer</h5>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th class="text-right">Total Outstanding</th>
+                            <th class="text-right">Current</th>
+                            <th class="text-right">1-30 Days</th>
+                            <th class="text-right">31-60 Days</th>
+                            <th class="text-right">61-90 Days</th>
+                            <th class="text-right">Over 90 Days</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer, data in customer_summary.items %}
+                        <tr>
+                            <td>{{ customer }}</td>
+                            <td class="text-right">${{ data.total|floatformat:2 }}</td>
+                            <td class="text-right">${{ data.current|floatformat:2 }}</td>
+                            <td class="text-right">${{ data.days_1_30|floatformat:2 }}</td>
+                            <td class="text-right">${{ data.days_31_60|floatformat:2 }}</td>
+                            <td class="text-right">${{ data.days_61_90|floatformat:2 }}</td>
+                            <td class="text-right">${{ data.days_over_90|floatformat:2 }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'invoicing:customer_detail' data.customer_id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-user"></i> View Customer
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize aging chart
+        {% if aging_data %}
+        var ctx = document.getElementById('agingChart').getContext('2d');
+        var agingChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    'Current', 
+                    '1-30 Days Past Due', 
+                    '31-60 Days Past Due', 
+                    '61-90 Days Past Due', 
+                    'Over 90 Days Past Due'
+                ],
+                datasets: [{
+                    data: [
+                        {{ totals.current }},
+                        {{ totals.days_1_30 }},
+                        {{ totals.days_31_60 }},
+                        {{ totals.days_61_90 }},
+                        {{ totals.days_over_90 }}
+                    ],
+                    backgroundColor: [
+                        '#28a745',  // green
+                        '#ffc107',  // yellow
+                        '#fd7e14',  // orange
+                        '#dc3545',  // red
+                        '#6c757d'   // dark grey
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                legend: {
+                    position: 'bottom'
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var dataset = data.datasets[tooltipItem.datasetIndex];
+                            var value = dataset.data[tooltipItem.index];
+                            var label = data.labels[tooltipItem.index];
+                            var total = dataset.data.reduce(function(previousValue, currentValue) {
+                                return previousValue + currentValue;
+                            });
+                            var percentage = Math.round((value / total) * 100);
+                            return label + ': $' + value.toFixed(2) + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

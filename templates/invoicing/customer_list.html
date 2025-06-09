@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+  .customer-card {
+    transition: transform 0.2s;
+  }
+  .customer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
+  .customer-icon {
+    font-size: 2rem;
+    opacity: 0.7;
+  }
+  .customer-info {
+    font-size: 0.9rem;
+  }
+  .stats-badge {
+    font-size: 0.8rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Customers</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-group me-2">
+        <a href="{% url 'invoicing:customer_create' %}" class="btn btn-sm btn-primary">
+          <i class="fas fa-plus"></i> New Customer
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="row mb-4">
+    <div class="col-md-6 offset-md-3">
+      <form method="get" action="{% url 'invoicing:customer_list' %}" class="d-flex">
+        <input type="text" name="q" class="form-control" placeholder="Search customers..." value="{{ search_query|default:'' }}">
+        <button type="submit" class="btn btn-primary ms-2">
+          <i class="fas fa-search"></i>
+        </button>
+        {% if search_query %}
+        <a href="{% url 'invoicing:customer_list' %}" class="btn btn-outline-secondary ms-2">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Customers Grid -->
+  <div class="row">
+    {% for customer in customers %}
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm customer-card h-100">
+        <div class="card-body">
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              {% if customer.customer_type == 'business' %}
+              <i class="fas fa-building customer-icon text-primary"></i>
+              {% else %}
+              <i class="fas fa-user customer-icon text-info"></i>
+              {% endif %}
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h5 class="card-title mb-0">
+                <a href="{% url 'invoicing:customer_detail' customer.id %}" class="text-decoration-none">
+                  {{ customer }}
+                </a>
+              </h5>
+              {% if customer.customer_type == 'business' and customer.company_name %}
+                <p class="text-muted mb-0">{{ customer.company_name }}</p>
+              {% endif %}
+            </div>
+          </div>
+          
+          <div class="customer-info mb-3">
+            <p class="mb-1">
+              <i class="fas fa-envelope fa-fw text-muted"></i> {{ customer.email }}
+            </p>
+            {% if customer.phone %}
+            <p class="mb-1">
+              <i class="fas fa-phone fa-fw text-muted"></i> {{ customer.phone }}
+            </p>
+            {% endif %}
+            {% if customer.city or customer.country %}
+            <p class="mb-1">
+              <i class="fas fa-map-marker-alt fa-fw text-muted"></i> 
+              {{ customer.city }}{% if customer.city and customer.country %}, {% endif %}
+              {{ customer.country }}
+            </p>
+            {% endif %}
+          </div>
+          
+          <div class="d-flex justify-content-between">
+            <span class="badge bg-primary stats-badge">
+              <i class="fas fa-file-invoice"></i> {{ customer.total_invoices }} Invoices
+            </span>
+            {% if customer.open_invoices > 0 %}
+            <span class="badge bg-warning stats-badge">
+              <i class="fas fa-clock"></i> {{ customer.open_invoices }} Open
+            </span>
+            {% endif %}
+            <span class="badge bg-success stats-badge">
+              <i class="fas fa-dollar-sign"></i> ${{ customer.total_spent|floatformat:2 }}
+            </span>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-top-0">
+          <div class="btn-group btn-group-sm w-100">
+            <a href="{% url 'invoicing:customer_detail' customer.id %}" class="btn btn-outline-primary">
+              <i class="fas fa-eye"></i> View
+            </a>
+            <a href="{% url 'invoicing:customer_edit' customer.id %}" class="btn btn-outline-secondary">
+              <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{% url 'invoicing:invoice_create' %}?customer={{ customer.id }}" class="btn btn-outline-success">
+              <i class="fas fa-plus"></i> Invoice
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+      <div class="text-muted">
+        <i class="fas fa-users fa-4x mb-3"></i>
+        <h4>No customers found</h4>
+        {% if search_query %}
+        <p>No customers match your search criteria: "{{ search_query }}"</p>
+        <a href="{% url 'invoicing:customer_list' %}" class="btn btn-outline-primary">Clear Search</a>
+        {% else %}
+        <p>You haven't added any customers yet.</p>
+        <a href="{% url 'invoicing:customer_create' %}" class="btn btn-primary">Add Your First Customer</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" aria-label="Previous">
+          <span aria-hidden="true">&laquo;</span>
+        </a>
+      </li>
+      {% endif %}
+      
+      {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+      <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a></li>
+      {% endif %}
+      {% endfor %}
+      
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" aria-label="Next">
+          <span aria-hidden="true">&raquo;</span>
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

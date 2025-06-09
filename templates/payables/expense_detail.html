@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">Expense #{{ expense.expense_number }}</h1>
+            <p class="text-muted">{{ expense.expense_date }} • {{ expense.category.name }}</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                {% if expense.status not in 'approved,reimbursed' %}
+                <a href="{% url 'payables:expense_edit' expense.id %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% endif %}
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    {% if expense.status == 'pending' %}
+                    <a class="dropdown-item" href="{% url 'payables:expense_approve' expense.id %}">
+                        <i class="fas fa-check text-success"></i> Approve
+                    </a>
+                    <a class="dropdown-item" href="{% url 'payables:expense_reject' expense.id %}">
+                        <i class="fas fa-times text-danger"></i> Reject
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    {% endif %}
+                    {% if expense.receipt %}
+                    <a class="dropdown-item" href="{{ expense.receipt.url }}" target="_blank">
+                        <i class="fas fa-paperclip"></i> View Receipt
+                    </a>
+                    {% endif %}
+                    <a class="dropdown-item" href="#" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </a>
+                    {% if expense.status not in 'approved,reimbursed' %}
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item text-danger" href="{% url 'payables:expense_delete' expense.id %}">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Alert -->
+    {% if expense.status == 'approved' %}
+    <div class="alert alert-success" role="alert">
+        <i class="fas fa-check-circle"></i> This expense has been approved
+    </div>
+    {% elif expense.status == 'rejected' %}
+    <div class="alert alert-danger" role="alert">
+        <i class="fas fa-times-circle"></i> This expense has been rejected
+    </div>
+    {% elif expense.status == 'pending' %}
+    <div class="alert alert-warning" role="alert">
+        <i class="fas fa-clock"></i> This expense is pending approval
+    </div>
+    {% elif expense.status == 'reimbursed' %}
+    <div class="alert alert-info" role="alert">
+        <i class="fas fa-money-check"></i> This expense has been reimbursed
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Expense Information -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Expense Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Vendor</h6>
+                            <p>
+                                {% if expense.vendor %}
+                                <a href="{% url 'payables:vendor_detail' expense.vendor.id %}">{{ expense.vendor.company_name }}</a>
+                                {% else %}
+                                <span class="text-muted">No vendor specified</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Expense Information</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="text-muted">Expense #:</td>
+                                    <td class="text-right">{{ expense.expense_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Date:</td>
+                                    <td class="text-right">{{ expense.expense_date }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Category:</td>
+                                    <td class="text-right">{{ expense.category.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Payment Mode:</td>
+                                    <td class="text-right">{{ expense.get_payment_mode_display }}</td>
+                                </tr>
+                                {% if expense.reference_number %}
+                                <tr>
+                                    <td class="text-muted">Reference #:</td>
+                                    <td class="text-right">{{ expense.reference_number }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="text-muted">Description</h6>
+                        <p>{{ expense.description }}</p>
+                    </div>
+
+                    {% if expense.is_billable %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Billable Information</h6>
+                        <p>
+                            <span class="badge badge-info">Billable</span>
+                            {% if expense.customer %}
+                            to <a href="{% url 'invoicing:customer_detail' expense.customer.id %}">{{ expense.customer }}</a>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% if expense.notes %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Notes</h6>
+                        <p>{{ expense.notes|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Amount Breakdown -->
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tbody>
+                                <tr>
+                                    <td class="text-right">Amount:</td>
+                                    <td class="text-right" style="width: 150px;">${{ expense.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% if expense.tax_amount > 0 %}
+                                <tr>
+                                    <td class="text-right">Tax:</td>
+                                    <td class="text-right">${{ expense.tax_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-active font-weight-bold">
+                                    <td class="text-right">Total:</td>
+                                    <td class="text-right">${{ expense.total_amount|floatformat:2 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if expense.receipt %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Attachments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ expense.receipt.url }}" target="_blank" class="list-group-item list-group-item-action">
+                            <i class="fas fa-file"></i> {{ expense.receipt.name }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Summary and Actions -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Summary</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Status:</dt>
+                        <dd class="col-sm-6">
+                            {% if expense.status == 'approved' %}
+                                <span class="badge badge-success">Approved</span>
+                            {% elif expense.status == 'rejected' %}
+                                <span class="badge badge-danger">Rejected</span>
+                            {% elif expense.status == 'pending' %}
+                                <span class="badge badge-warning">Pending</span>
+                            {% elif expense.status == 'reimbursed' %}
+                                <span class="badge badge-primary">Reimbursed</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ expense.get_status_display }}</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-6">Total Amount:</dt>
+                        <dd class="col-sm-6 font-weight-bold">${{ expense.total_amount|floatformat:2 }}</dd>
+                        
+                        <dt class="col-sm-6">Created:</dt>
+                        <dd class="col-sm-6">{{ expense.created_at|date:"M d, Y" }}</dd>
+                        
+                        <dt class="col-sm-6">Created By:</dt>
+                        <dd class="col-sm-6">{{ expense.created_by.get_full_name|default:expense.created_by.username }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% if expense.status == 'pending' %}
+                        <a href="{% url 'payables:expense_approve' expense.id %}" class="list-group-item list-group-item-action text-success">
+                            <i class="fas fa-check"></i> Approve Expense
+                        </a>
+                        <a href="{% url 'payables:expense_reject' expense.id %}" class="list-group-item list-group-item-action text-danger">
+                            <i class="fas fa-times"></i> Reject Expense
+                        </a>
+                        {% endif %}
+                        {% if expense.status not in 'approved,reimbursed' %}
+                        <a href="{% url 'payables:expense_edit' expense.id %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-edit text-primary"></i> Edit Expense
+                        </a>
+                        {% endif %}
+                        <a href="#" onclick="window.print()" class="list-group-item list-group-item-action">
+                            <i class="fas fa-print text-secondary"></i> Print Expense
+                        </a>
+                        {% if expense.vendor %}
+                        <a href="{% url 'payables:vendor_detail' expense.vendor.id %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-building text-primary"></i> View Vendor
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header, .col-md-4 {
+        display: none !important;
+    }
+    .col-md-8 {
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+}
+</style>
+{% endblock %}

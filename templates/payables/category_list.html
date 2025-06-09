@@ -1,0 +1,131 @@
+<!-- category_list.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">Expense Categories</h1>
+            <p class="text-muted">Manage expense categories for bills and expenses</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'payables:category_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Category
+            </a>
+        </div>
+    </div>
+
+    <!-- Categories List -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if categories %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Bills Count</th>
+                            <th>Expenses Count</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>
+                                <strong>{{ category.name }}</strong>
+                                {% if category.parent %}
+                                <br><small class="text-muted">Under: {{ category.parent.name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if category.description %}
+                                    {{ category.description|truncatechars:100 }}
+                                {% else %}
+                                    <span class="text-muted">No description</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if category.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ category.bill_items.count }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ category.expenses.count }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'payables:category_edit' category.id %}" 
+                                       class="btn btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if not category.bill_items.exists and not category.expenses.exists %}
+                                    <a href="{% url 'payables:category_delete' category.id %}" 
+                                       class="btn btn-outline-danger" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% else %}
+                                    <button class="btn btn-outline-secondary" disabled title="Cannot delete - in use">
+                                        <i class="fas fa-lock"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                <h5>No Categories Found</h5>
+                <p class="text-muted">Create expense categories to organize your bills and expenses.</p>
+                <a href="{% url 'payables:category_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create First Category
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0"><i class="fas fa-info-circle"></i> About Expense Categories</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>What are expense categories?</h6>
+                    <p class="text-muted small">
+                        Expense categories help you organize and classify your business expenses for better 
+                        tracking and reporting. They're used when creating bills and recording expenses.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Common categories include:</h6>
+                    <ul class="text-muted small">
+                        <li>Office Supplies</li>
+                        <li>Utilities</li>
+                        <li>Marketing & Advertising</li>
+                        <li>Travel & Entertainment</li>
+                        <li>Professional Services</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

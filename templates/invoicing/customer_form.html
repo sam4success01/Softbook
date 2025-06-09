@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+  .form-group label {
+    font-weight: 500;
+  }
+  .required-field label::after {
+    content: ' *';
+    color: #dc3545;
+  }
+  .form-section {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .form-section-title {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ title }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-group me-2">
+        <a href="{% if customer %}{% url 'invoicing:customer_detail' customer.id %}{% else %}{% url 'invoicing:customer_list' %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-times"></i> Cancel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" id="customerForm">
+        {% csrf_token %}
+        
+        <!-- Customer Type Selection -->
+        <div class="form-section">
+          <h5 class="form-section-title">Customer Type</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="customer_type" id="customerTypeBusiness" value="business" {% if form.customer_type.value == 'business' %}checked{% endif %} {% if not form.customer_type.value %}checked{% endif %}>
+                <label class="form-check-label" for="customerTypeBusiness">Business</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="customer_type" id="customerTypeIndividual" value="individual" {% if form.customer_type.value == 'individual' %}checked{% endif %}>
+                <label class="form-check-label" for="customerTypeIndividual">Individual</label>
+              </div>
+              {% if form.customer_type.errors %}
+              <div class="text-danger">{{ form.customer_type.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Primary Information -->
+        <div class="form-section">
+          <h5 class="form-section-title">Primary Information</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3 business-field">
+              <div class="form-group">
+                <label for="{{ form.company_name.id_for_label }}">Company Name</label>
+                {{ form.company_name }}
+                {% if form.company_name.errors %}
+                <div class="text-danger">{{ form.company_name.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3 required-field">
+              <div class="form-group">
+                <label for="{{ form.first_name.id_for_label }}">First Name</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                <div class="text-danger">{{ form.first_name.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3 required-field">
+              <div class="form-group">
+                <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                <div class="text-danger">{{ form.last_name.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3 required-field">
+              <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">Email Address</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <div class="text-danger">{{ form.email.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="form-group">
+                <label for="{{ form.phone.id_for_label }}">Phone Number</label>
+                {{ form.phone }}
+                {% if form.phone.errors %}
+                <div class="text-danger">{{ form.phone.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3 business-field">
+              <div class="form-group">
+                <label for="{{ form.tax_number.id_for_label }}">Tax Number</label>
+                {{ form.tax_number }}
+                {% if form.tax_number.errors %}
+                <div class="text-danger">{{ form.tax_number.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Address Information -->
+        <div class="form-section">
+          <h5 class="form-section-title">Address Information</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="form-group">
+                <label for="{{ form.address_line1.id_for_label }}">Address Line 1</label>
+                {{ form.address_line1 }}
+                {% if form.address_line1.errors %}
+                <div class="text-danger">{{ form.address_line1.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="form-group">
+                <label for="{{ form.address_line2.id_for_label }}">Address Line 2</label>
+                {{ form.address_line2 }}
+                {% if form.address_line2.errors %}
+                <div class="text-danger">{{ form.address_line2.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="form-group">
+                <label for="{{ form.city.id_for_label }}">City</label>
+                {{ form.city }}
+                {% if form.city.errors %}
+                <div class="text-danger">{{ form.city.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="form-group">
+                <label for="{{ form.state.id_for_label }}">State/Province</label>
+                {{ form.state }}
+                {% if form.state.errors %}
+                <div class="text-danger">{{ form.state.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="form-group">
+                <label for="{{ form.postal_code.id_for_label }}">Postal Code</label>
+                {{ form.postal_code }}
+                {% if form.postal_code.errors %}
+                <div class="text-danger">{{ form.postal_code.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="form-group">
+                <label for="{{ form.country.id_for_label }}">Country</label>
+                {{ form.country }}
+                {% if form.country.errors %}
+                <div class="text-danger">{{ form.country.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Additional Information -->
+        <div class="form-section">
+          <h5 class="form-section-title">Additional Information</h5>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <div class="form-group">
+                <label for="{{ form.notes.id_for_label }}">Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                <div class="text-danger">{{ form.notes.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Submit Buttons -->
+        <div class="d-flex justify-content-end">
+          <a href="{% if customer %}{% url 'invoicing:customer_detail' customer.id %}{% else %}{% url 'invoicing:customer_list' %}{% endif %}" class="btn btn-secondary me-2">Cancel</a>
+          
+          {% if not customer %}
+          <button type="submit" name="save_and_new" class="btn btn-outline-primary me-2">Save & New</button>
+          <button type="submit" name="save_and_invoice" class="btn btn-outline-primary me-2">Save & Create Invoice</button>
+          {% endif %}
+          
+          <button type="submit" name="save" class="btn btn-primary">
+            {% if customer %}Update{% else %}Save{% endif %} Customer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const customerTypeRadios = document.querySelectorAll('input[name="customer_type"]');
+  const businessFields = document.querySelectorAll('.business-field');
+  
+  // Function to toggle visibility of business-specific fields
+  function toggleBusinessFields() {
+    const isBusinessType = document.getElementById('customerTypeBusiness').checked;
+    
+    businessFields.forEach(field => {
+      if (isBusinessType) {
+        field.style.display = 'block';
+      } else {
+        field.style.display = 'none';
+      }
+    });
+  }
+  
+  // Set initial state
+  toggleBusinessFields();
+  
+  // Add event listeners to radio buttons
+  customerTypeRadios.forEach(radio => {
+    radio.addEventListener('change', toggleBusinessFields);
+  });
+});
+</script>
+{% endblock %}

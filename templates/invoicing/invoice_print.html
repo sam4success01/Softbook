@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Print Invoice #{{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body {
+            font-size: 12pt;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .invoice-container {
+            padding: 20px;
+            border: none;
+            box-shadow: none;
+        }
+        .btn, .navbar, .sidebar {
+            display: none !important;
+        }
+        footer {
+            display: none;
+        }
+    }
+    
+    .invoice-header {
+        margin-bottom: 30px;
+    }
+    
+    .company-details, .customer-details {
+        margin-bottom: 20px;
+    }
+    
+    .invoice-title {
+        color: #333;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .invoice-meta {
+        margin-bottom: 20px;
+    }
+    
+    .invoice-meta-item {
+        margin-bottom: 8px;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    .invoice-total {
+        margin-top: 20px;
+    }
+    
+    .invoice-total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    
+    .invoice-total-label {
+        font-weight: bold;
+        text-align: right;
+    }
+    
+    .invoice-notes, .invoice-terms {
+        margin-top: 30px;
+    }
+    
+    .invoice-footer {
+        margin-top: 50px;
+        text-align: center;
+        font-size: 90%;
+        color: #6c757d;
+    }
+    
+    .payment-status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+    
+    .status-paid {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-unpaid {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-partially-paid {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .stamp {
+        position: absolute;
+        top: 40%;
+        left: 30%;
+        transform: rotate(-20deg);
+        font-size: 48px;
+        font-weight: bold;
+        color: rgba(255, 0, 0, 0.3);
+        border: 10px solid rgba(255, 0, 0, 0.3);
+        padding: 10px 20px;
+        border-radius: 10px;
+        z-index: 100;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row no-print mb-3">
+        <div class="col">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i> Print Invoice
+            </button>
+            <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-secondary">
+                <i class="fas fa-file-pdf"></i> Download PDF
+            </a>
+            <a href="{% url 'invoicing:invoice_detail' invoice.pk %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Invoice
+            </a>
+        </div>
+    </div>
+    
+    <div class="invoice-container bg-white p-4 border">
+        <!-- Invoice Header -->
+        <div class="invoice-header row">
+            <div class="col-md-6 company-details">
+                {% if invoice.template.logo %}
+                    <img src="{{ invoice.template.logo.url }}" alt="Company Logo" style="max-height: 100px; max-width: 300px;">
+                {% endif %}
+                <h3>{{ invoice.template.header|default:"" }}</h3>
+            </div>
+            <div class="col-md-6 text-md-right">
+                <h1 class="invoice-title">INVOICE</h1>
+                <div class="invoice-meta">
+                    <div class="invoice-meta-item"><strong>Invoice #:</strong> {{ invoice.invoice_number }}</div>
+                    <div class="invoice-meta-item"><strong>Issue Date:</strong> {{ invoice.issue_date }}</div>
+                    <div class="invoice-meta-item"><strong>Due Date:</strong> {{ invoice.due_date }}</div>
+                    <div class="invoice-meta-item">
+                        <strong>Status:</strong> 
+                        <span class="payment-status 
+                            {% if invoice.status == 'paid' %}status-paid
+                            {% elif invoice.status == 'partially_paid' %}status-partially-paid
+                            {% else %}status-unpaid{% endif %}">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer Details -->
+        <div class="row">
+            <div class="col-md-6 customer-details">
+                <h5>Bill To:</h5>
+                {% if invoice.customer.customer_type == 'business' and invoice.customer.company_name %}
+                    <strong>{{ invoice.customer.company_name }}</strong><br>
+                    {{ invoice.customer.first_name }} {{ invoice.customer.last_name }}<br>
+                {% else %}
+                    <strong>{{ invoice.customer.first_name }} {{ invoice.customer.last_name }}</strong><br>
+                {% endif %}
+                {% if invoice.customer.address_line1 %}{{ invoice.customer.address_line1 }}<br>{% endif %}
+                {% if invoice.customer.address_line2 %}{{ invoice.customer.address_line2 }}<br>{% endif %}
+                {% if invoice.customer.city or invoice.customer.state or invoice.customer.postal_code %}
+                    {% if invoice.customer.city %}{{ invoice.customer.city }}{% endif %}{% if invoice.customer.state %}, {{ invoice.customer.state }}{% endif %}{% if invoice.customer.postal_code %} {{ invoice.customer.postal_code }}{% endif %}<br>
+                {% endif %}
+                {% if invoice.customer.country %}{{ invoice.customer.country }}<br>{% endif %}
+                {% if invoice.customer.email %}Email: {{ invoice.customer.email }}<br>{% endif %}
+                {% if invoice.customer.phone %}Phone: {{ invoice.customer.phone }}{% endif %}
+            </div>
+        </div>
+        
+        <!-- Invoice Items -->
+        <div class="table-responsive mt-4">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Description</th>
+                        <th class="text-right">Quantity</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right">Tax (%)</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.description }}</td>
+                        <td class="text-right">{{ item.quantity }}</td>
+                        <td class="text-right">${{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-right">{{ item.tax_rate|floatformat:2 }}%</td>
+                        <td class="text-right">${{ item.line_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Invoice Totals -->
+        <div class="row">
+            <div class="col-md-6">
+                {% if invoice.notes %}
+                <div class="invoice-notes">
+                    <h5>Notes</h5>
+                    <p>{{ invoice.notes }}</p>
+                </div>
+                {% endif %}
+                
+                {% if invoice.terms %}
+                <div class="invoice-terms">
+                    <h5>Terms & Conditions</h5>
+                    <p>{{ invoice.terms }}</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <div class="invoice-total">
+                    <div class="invoice-total-row">
+                        <div class="invoice-total-label">Subtotal:</div>
+                        <div class="invoice-total-value">${{ invoice.subtotal|floatformat:2 }}</div>
+                    </div>
+                    
+                    <div class="invoice-total-row">
+                        <div class="invoice-total-label">Tax:</div>
+                        <div class="invoice-total-value">${{ invoice.tax_amount|floatformat:2 }}</div>
+                    </div>
+                    
+                    {% if invoice.discount_amount > 0 %}
+                    <div class="invoice-total-row">
+                        <div class="invoice-total-label">Discount:</div>
+                        <div class="invoice-total-value">-${{ invoice.discount_amount|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="invoice-total-row" style="font-weight: bold; font-size: 1.2em; border-top: 1px solid #dee2e6; padding-top: 8px; margin-top: 8px;">
+                        <div class="invoice-total-label">Total:</div>
+                        <div class="invoice-total-value">${{ invoice.total|floatformat:2 }}</div>
+                    </div>
+                    
+                    {% if invoice.amount_paid > 0 %}
+                    <div class="invoice-total-row">
+                        <div class="invoice-total-label">Amount Paid:</div>
+                        <div class="invoice-total-value">${{ invoice.amount_paid|floatformat:2 }}</div>
+                    </div>
+                    
+                    <div class="invoice-total-row" style="font-weight: bold;">
+                        <div class="invoice-total-label">Balance Due:</div>
+                        <div class="invoice-total-value">${{ invoice.balance_due|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Invoice Footer -->
+        <div class="invoice-footer">
+            {{ invoice.template.footer|default:"" }}
+        </div>
+        
+        <!-- Paid Stamp -->
+        {% if invoice.status == 'paid' %}
+        <div class="stamp">PAID</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

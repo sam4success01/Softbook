@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}New{% endif %} Invoice Template{% endblock %}
+
+{% block extra_head %}
+<style>
+    .template-preview {
+        border: 1px solid #dee2e6;
+        padding: 20px;
+        border-radius: 4px;
+    }
+
+    .template-preview-header {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .template-preview-footer {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .color-preview {
+        width: 30px;
+        height: 30px;
+        display: inline-block;
+        border-radius: 4px;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">{% if object %}Edit{% else %}New{% endif %} Invoice Template</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'invoicing:template_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Templates
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Template Details</h5>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>There are errors in the form. Please correct them before submitting.</strong>
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}" class="font-weight-bold">Template Name *</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.logo.id_for_label }}" class="font-weight-bold">Logo</label>
+                            {% if object and object.logo %}
+                            <div class="mb-2">
+                                <img src="{{ object.logo.url }}" alt="Current Logo" class="img-thumbnail" style="max-height: 100px;">
+                            </div>
+                            {% endif %}
+                            {{ form.logo }}
+                            {% if form.logo.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.logo.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Recommended size: 300x100 pixels, transparent background</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.primary_color.id_for_label }}" class="font-weight-bold">Primary Color</label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        <div id="colorPreview" class="color-preview" style="background-color: {{ form.primary_color.value|default:'#007bff' }};"></div>
+                                    </span>
+                                </div>
+                                {{ form.primary_color }}
+                                {% if form.primary_color.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.primary_color.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">This color will be used for headings and accents in the invoice</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.header.id_for_label }}" class="font-weight-bold">Header</label>
+                            {{ form.header }}
+                            {% if form.header.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.header.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Content to display at the top of the invoice (e.g., company name)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.footer.id_for_label }}" class="font-weight-bold">Footer</label>
+                            {{ form.footer }}
+                            {% if form.footer.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.footer.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Content to display at the bottom of the invoice (e.g., thank you message)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.terms.id_for_label }}" class="font-weight-bold">Default Terms</label>
+                            {{ form.terms }}
+                            {% if form.terms.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.terms.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Default terms and conditions to include on invoices</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}" class="font-weight-bold">Default Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.notes.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Default notes to include on invoices (can be overridden)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                {{ form.is_default }}
+                                <label class="custom-control-label font-weight-bold" for="{{ form.is_default.id_for_label }}">Use as Default Template</label>
+                                {% if form.is_default.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.is_default.errors }}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block">This template will be selected by default when creating new invoices</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 border-top pt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Template
+                            </button>
+                            <a href="{% url 'invoicing:template_list' %}" class="btn btn-outline-secondary ml-2">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Preview</h5>
+                </div>
+                
+                <div class="card-body">
+                    <div class="template-preview">
+                        <div class="template-preview-header">
+                            {% if object and object.logo %}
+                            <img src="{{ object.logo.url }}" alt="Logo" class="img-fluid mb-2" style="max-height: 80px;">
+                            {% else %}
+                            <div class="bg-light text-center p-3 mb-2">
+                                <i class="fas fa-image text-muted"></i> Logo
+                            </div>
+                            {% endif %}
+                            <div id="headerPreview" class="mt-2">
+                                {{ object.header|default:"Company Name" }}
+                            </div>
+                        </div>
+                        
+                        <div style="height: 150px; border: 1px dashed #dee2e6; display: flex; align-items: center; justify-content: center;">
+                            <span class="text-muted">Invoice Content</span>
+                        </div>
+                        
+                        <div class="template-preview-footer">
+                            <div id="footerPreview" class="text-center">
+                                {{ object.footer|default:"Thank you for your business!" }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">This is a simplified preview. The actual invoice will include customer details, line items, and totals.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update color preview when color changes
+        const colorInput = document.getElementById('{{ form.primary_color.id_for_label }}');
+        const colorPreview = document.getElementById('colorPreview');
+        
+        colorInput.addEventListener('input', function() {
+            colorPreview.style.backgroundColor = this.value;
+        });
+        
+        // Update header and footer preview when content changes
+        const headerInput = document.getElementById('{{ form.header.id_for_label }}');
+        const headerPreview = document.getElementById('headerPreview');
+        
+        headerInput.addEventListener('input', function() {
+            headerPreview.textContent = this.value || 'Company Name';
+        });
+        
+        const footerInput = document.getElementById('{{ form.footer.id_for_label }}');
+        const footerPreview = document.getElementById('footerPreview');
+        
+        footerInput.addEventListener('input', function() {
+            footerPreview.textContent = this.value || 'Thank you for your business!';
+        });
+    });
+</script>
+{% endblock %}

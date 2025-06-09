@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'crispy_forms',
+    'crispy_bootstrap5',
     
     # Local apps
     'core.apps.CoreConfig',
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     'accounting.apps.AccountingConfig',
     'invoicing.apps.InvoicingConfig',
     'expenses.apps.ExpensesConfig',
+    'Payables.apps.PayablesConfig',
     'banking.apps.BankingConfig',
     'reports.apps.ReportsConfig',
     'inventory.apps.InventoryConfig',

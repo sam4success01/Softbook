@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Payments</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'payables:payment_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Record Payment
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <a data-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false">
+                    <i class="fas fa-filter"></i> Filters
+                </a>
+            </h5>
+        </div>
+        <div class="collapse" id="filterCollapse">
+            <div class="card-body">
+                <form method="get" class="form-row">
+                    <div class="col-md-3 mb-3">
+                        <label for="vendor">Vendor</label>
+                        <select name="vendor" id="vendor" class="form-control">
+                            <option value="">All Vendors</option>
+                            {% for vendor in vendors %}
+                            <option value="{{ vendor.id }}" {% if vendor.id|stringformat:"i" == vendor_id %}selected{% endif %}>
+                                {{ vendor.company_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="date_from">From Date</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from|default:'' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="date_to">To Date</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to|default:'' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary btn-block">Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="card-title">Total Payments</h5>
+                            <h3>${{ total_amount|floatformat:2 }}</h3>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-check fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payments Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if payments %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'payment_number' %}-{% endif %}payment_number">
+                                    Payment # {% if request.GET.order_by == 'payment_number' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-payment_number' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?order_by={% if request.GET.order_by == 'payment_date' %}-{% endif %}payment_date">
+                                    Date {% if request.GET.order_by == 'payment_date' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-payment_date' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>Vendor</th>
+                            <th>Payment Method</th>
+                            <th>Reference</th>
+                            <th class="text-right">
+                                <a href="?order_by={% if request.GET.order_by == 'amount' %}-{% endif %}amount">
+                                    Amount {% if request.GET.order_by == 'amount' %}<i class="fas fa-sort-up"></i>{% elif request.GET.order_by == '-amount' %}<i class="fas fa-sort-down"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="text-center">Bills</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'payables:payment_detail' payment.id %}">{{ payment.payment_number }}</a>
+                            </td>
+                            <td>{{ payment.payment_date }}</td>
+                            <td>{{ payment.vendor.company_name }}</td>
+                            <td>
+                                <span class="badge badge-secondary">{{ payment.get_payment_method_display }}</span>
+                            </td>
+                            <td>{{ payment.reference_number|default:"-" }}</td>
+                            <td class="text-right">${{ payment.amount|floatformat:2 }}</td>
+                            <td class="text-center">
+                                <span class="badge badge-info">{{ payment.allocations.count }}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'payables:payment_detail' payment.id %}" class="btn btn-outline-info" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'payables:payment_edit' payment.id %}" class="btn btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-money-check fa-3x text-muted mb-3"></i>
+                <h5>No payments found</h5>
+                <p class="text-muted">Start by recording your first payment</p>
+                <a href="{% url 'payables:payment_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Record Payment
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if is_paginated %}
+        <div class="card-footer bg-white">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }} <span class="sr-only">(current)</span></span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

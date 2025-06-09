@@ -1,0 +1,85 @@
+<!-- payment_confirm_delete.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirm Payment Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-warning"></i> Warning</h6>
+                        <p class="mb-0">
+                            You are about to permanently delete payment: 
+                            <strong>{{ payment.payment_number }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Payment Information:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Payment Number:</strong> {{ payment.payment_number }}</li>
+                            <li><strong>Vendor:</strong> {{ payment.vendor.company_name }}</li>
+                            <li><strong>Date:</strong> {{ payment.payment_date }}</li>
+                            <li><strong>Amount:</strong> ${{ payment.amount|floatformat:2 }}</li>
+                            <li><strong>Method:</strong> {{ payment.get_payment_method_display }}</li>
+                            {% if payment.reference_number %}
+                            <li><strong>Reference:</strong> {{ payment.reference_number }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    {% if payment.allocations.exists %}
+                    <div class="mb-3">
+                        <h6>Applied to Bills:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Bill Number</th>
+                                        <th class="text-end">Applied Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for allocation in payment.allocations.all %}
+                                    <tr>
+                                        <td>{{ allocation.bill.bill_number }}</td>
+                                        <td class="text-end">${{ allocation.amount|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-warning">
+                        <strong>This action cannot be undone.</strong> 
+                        Deleting this payment will also remove all bill allocations and may affect bill balances.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:payment_detail' payment.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Yes, Delete Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

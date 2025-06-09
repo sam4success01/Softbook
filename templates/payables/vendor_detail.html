@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">{{ vendor.company_name }}</h1>
+            <p class="text-muted">
+                {% if vendor.contact_person %}{{ vendor.contact_person }} • {% endif %}
+                {{ vendor.email }}
+                {% if vendor.phone %} • {{ vendor.phone }}{% endif %}
+            </p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <a href="{% url 'payables:vendor_edit' vendor.id %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="{% url 'payables:bill_create' %}?vendor={{ vendor.id }}">
+                        <i class="fas fa-file-invoice"></i> Create Bill
+                    </a>
+                    <a class="dropdown-item" href="{% url 'payables:expense_create' %}?vendor={{ vendor.id }}">
+                        <i class="fas fa-receipt"></i> Record Expense
+                    </a>
+                    <a class="dropdown-item" href="{% url 'payables:payment_create' %}?vendor={{ vendor.id }}">
+                        <i class="fas fa-money-check"></i> Record Payment
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    {% if not vendor.bills.exists and not vendor.expenses.exists and not vendor.payments.exists %}
+                    <a class="dropdown-item text-danger" href="{% url 'payables:vendor_delete' vendor.id %}">
+                        <i class="fas fa-trash"></i> Delete Vendor
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Alert -->
+    {% if not vendor.is_active %}
+    <div class="alert alert-warning" role="alert">
+        <i class="fas fa-exclamation-triangle"></i> This vendor is marked as inactive
+    </div>
+    {% endif %}
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Bills</h5>
+                    <h3>{{ stats.total_bills }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Open Bills</h5>
+                    <h3>{{ stats.open_bills }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Paid</h5>
+                    <h3>${{ stats.paid_amount|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Outstanding</h5>
+                    <h3>${{ stats.outstanding_amount|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Vendor Information -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Vendor Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Type:</dt>
+                        <dd class="col-sm-7">{{ vendor.get_vendor_type_display }}</dd>
+                        
+                        <dt class="col-sm-5">Email:</dt>
+                        <dd class="col-sm-7"><a href="mailto:{{ vendor.email }}">{{ vendor.email }}</a></dd>
+                        
+                        {% if vendor.phone %}
+                        <dt class="col-sm-5">Phone:</dt>
+                        <dd class="col-sm-7">{{ vendor.phone }}</dd>
+                        {% endif %}
+                        
+                        {% if vendor.website %}
+                        <dt class="col-sm-5">Website:</dt>
+                        <dd class="col-sm-7"><a href="{{ vendor.website }}" target="_blank">{{ vendor.website }}</a></dd>
+                        {% endif %}
+                        
+                        {% if vendor.tax_number %}
+                        <dt class="col-sm-5">Tax Number:</dt>
+                        <dd class="col-sm-7">{{ vendor.tax_number }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-5">Payment Terms:</dt>
+                        <dd class="col-sm-7">{{ vendor.get_payment_terms_display }}</dd>
+                        
+                        {% if vendor.credit_limit > 0 %}
+                        <dt class="col-sm-5">Credit Limit:</dt>
+                        <dd class="col-sm-7">${{ vendor.credit_limit|floatformat:2 }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-5">Status:</dt>
+                        <dd class="col-sm-7">
+                            {% if vendor.is_active %}
+                                <span class="badge badge-success">Active</span>
+                            {% else %}
+                                <span class="badge badge-secondary">Inactive</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if vendor.billing_address_line1 %}
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Billing Address</h5>
+                </div>
+                <div class="card-body">
+                    <address class="mb-0">
+                        {{ vendor.billing_address_line1 }}<br>
+                        {% if vendor.billing_address_line2 %}{{ vendor.billing_address_line2 }}<br>{% endif %}
+                        {% if vendor.billing_city %}{{ vendor.billing_city }}{% endif %}{% if vendor.billing_state %}, {{ vendor.billing_state }}{% endif %}
+                        {% if vendor.billing_postal_code %}{{ vendor.billing_postal_code }}{% endif %}<br>
+                        {% if vendor.billing_country %}{{ vendor.billing_country }}{% endif %}
+                    </address>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if vendor.notes %}
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Notes</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ vendor.notes|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-md-8">
+            <!-- Recent Bills -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Bills</h5>
+                    <a href="{% url 'payables:bill_list' %}?vendor={{ vendor.id }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if bills %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Bill #</th>
+                                    <th>Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Amount</th>
+                                    <th class="text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bill in bills %}
+                                <tr>
+                                    <td><a href="{% url 'payables:bill_detail' bill.id %}">{{ bill.bill_number }}</a></td>
+                                    <td>{{ bill.bill_date }}</td>
+                                    <td class="{% if bill.status == 'overdue' %}text-danger{% endif %}">{{ bill.due_date }}</td>
+                                    <td>
+                                        {% if bill.status == 'paid' %}
+                                            <span class="badge badge-success">Paid</span>
+                                        {% elif bill.status == 'overdue' %}
+                                            <span class="badge badge-danger">Overdue</span>
+                                        {% elif bill.status == 'open' %}
+                                            <span class="badge badge-warning">Open</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">{{ bill.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right">${{ bill.total|floatformat:2 }}</td>
+                                    <td class="text-right">${{ bill.balance_due|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-0">No bills found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Expenses -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Expenses</h5>
+                    <a href="{% url 'payables:expense_list' %}?vendor={{ vendor.id }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if expenses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Expense #</th>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in expenses %}
+                                <tr>
+                                    <td><a href="{% url 'payables:expense_detail' expense.id %}">{{ expense.expense_number }}</a></td>
+                                    <td>{{ expense.expense_date }}</td>
+                                    <td>{{ expense.category.name }}</td>
+                                    <td>
+                                        {% if expense.is_billable %}
+                                            <span class="badge badge-info">Billable</span>
+                                        {% endif %}
+                                        <span class="badge badge-secondary">{{ expense.get_status_display }}</span>
+                                    </td>
+                                    <td class="text-right">${{ expense.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-0">No expenses found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="card">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Payments</h5>
+                    <a href="{% url 'payables:payment_list' %}?vendor={{ vendor.id }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if payments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Payment #</th>
+                                    <th>Date</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td><a href="{% url 'payables:payment_detail' payment.id %}">{{ payment.payment_number }}</a></td>
+                                    <td>{{ payment.payment_date }}</td>
+                                    <td>{{ payment.get_payment_method_display }}</td>
+                                    <td>{{ payment.reference_number|default:"-" }}</td>
+                                    <td class="text-right">${{ payment.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-0">No payments found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

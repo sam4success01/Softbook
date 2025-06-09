@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SoftBooks{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+  .dashboard-card {
+    transition: transform 0.3s;
+  }
+  .dashboard-card:hover {
+    transform: translateY(-5px);
+  }
+  .stat-card {
+    border-radius: 0.5rem;
+    border-left: 4px solid;
+    transition: all 0.2s ease;
+  }
+  .stat-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+  .stat-card-primary {
+    border-left-color: #4e73df;
+  }
+  .stat-card-success {
+    border-left-color: #1cc88a;
+  }
+  .stat-card-info {
+    border-left-color: #36b9cc;
+  }
+  .stat-card-warning {
+    border-left-color: #f6c23e;
+  }
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  .stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+  }
+  .stat-icon {
+    font-size: 2rem;
+    opacity: 0.3;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Invoicing Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-group me-2">
+        <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-sm btn-primary">
+          <i class="fas fa-plus"></i> New Invoice
+        </a>
+        <a href="{% url 'invoicing:customer_create' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-user-plus"></i> New Customer
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-0 shadow h-100 py-2 stat-card stat-card-primary">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div class="stat-label mb-1">Total Invoices</div>
+              <div class="stat-value text-primary">{{ total_invoices }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-file-invoice stat-icon text-primary"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-0 shadow h-100 py-2 stat-card stat-card-success">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div class="stat-label mb-1">Monthly Revenue</div>
+              <div class="stat-value text-success">${{ monthly_revenue|floatformat:2 }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-dollar-sign stat-icon text-success"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-0 shadow h-100 py-2 stat-card stat-card-info">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div class="stat-label mb-1">Total Customers</div>
+              <div class="stat-value text-info">{{ total_customers }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-users stat-icon text-info"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card border-0 shadow h-100 py-2 stat-card stat-card-warning">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div class="stat-label mb-1">Pending Amount</div>
+              <div class="stat-value text-warning">${{ pending_amount|floatformat:2 }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-clock stat-icon text-warning"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Recent Invoices -->
+    <div class="col-lg-8 mb-4">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+          <h6 class="m-0 font-weight-bold text-primary">Recent Invoices</h6>
+          <a href="{% url 'invoicing:invoice_list' %}" class="btn btn-sm btn-primary">
+            View All
+          </a>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Customer</th>
+                  <th>Date</th>
+                  <th>Due Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for invoice in recent_invoices %}
+                <tr>
+                  <td>
+                    <a href="{% url 'invoicing:invoice_detail' invoice.id %}">
+                      {{ invoice.invoice_number }}
+                    </a>
+                  </td>
+                  <td>{{ invoice.customer }}</td>
+                  <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
+                  <td>{{ invoice.due_date|date:"M d, Y" }}</td>
+                  <td>${{ invoice.total|floatformat:2 }}</td>
+                  <td>
+                    <span class="badge {% if invoice.status == 'paid' %}bg-success{% elif invoice.status == 'overdue' %}bg-danger{% elif invoice.status == 'draft' %}bg-secondary{% else %}bg-warning{% endif %}">
+                      {{ invoice.get_status_display }}
+                    </span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center">No invoices found</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions and Overview -->
+    <div class="col-lg-4 mb-4">
+      <!-- Quick Actions -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary btn-block">
+              <i class="fas fa-plus-circle"></i> Create New Invoice
+            </a>
+            <a href="{% url 'invoicing:customer_create' %}" class="btn btn-outline-primary btn-block">
+              <i class="fas fa-user-plus"></i> Add New Customer
+            </a>
+            <a href="{% url 'invoicing:item_create' %}" class="btn btn-outline-primary btn-block">
+              <i class="fas fa-box"></i> Add Product/Service
+            </a>
+            <a href="{% url 'invoicing:aging_report' %}" class="btn btn-outline-primary btn-block">
+              <i class="fas fa-chart-bar"></i> Aging Report
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overdue Invoices -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-danger">Overdue Invoices</h6>
+        </div>
+        <div class="card-body">
+          {% if overdue_invoices %}
+            <div class="list-group">
+              {% for invoice in overdue_invoices|slice:":5" %}
+                <a href="{% url 'invoicing:invoice_detail' invoice.id %}" class="list-group-item list-group-item-action">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">{{ invoice.invoice_number }}</h6>
+                    <small class="text-danger">{{ invoice.days_overdue }} days overdue</small>
+                  </div>
+                  <p class="mb-1">{{ invoice.customer }}</p>
+                  <small>${{ invoice.balance_due|floatformat:2 }}</small>
+                </a>
+              {% endfor %}
+            </div>
+            {% if overdue_invoices.count > 5 %}
+              <div class="text-center mt-3">
+                <a href="{% url 'invoicing:invoice_list' %}?status=overdue" class="btn btn-sm btn-outline-danger">
+                  View All Overdue ({{ overdue_invoices.count }})
+                </a>
+              </div>
+            {% endif %}
+          {% else %}
+            <p class="text-center mb-0">No overdue invoices. Great job!</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Add any additional JavaScript here -->
+{% endblock %}

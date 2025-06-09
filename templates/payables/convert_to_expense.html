@@ -1,0 +1,126 @@
+<!-- convert_to_expense.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exchange-alt"></i> Convert Bill to Expense
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Bill Information</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Bill Number:</strong> {{ bill.bill_number }}<br>
+                                <strong>Vendor:</strong> {{ bill.vendor.company_name }}<br>
+                                <strong>Date:</strong> {{ bill.bill_date }}
+                            </div>
+                            <div class="col-6">
+                                <strong>Due Date:</strong> {{ bill.due_date }}<br>
+                                <strong>Total:</strong> ${{ bill.total|floatformat:2 }}<br>
+                                <strong>Status:</strong> {{ bill.get_status_display }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bill Items Preview -->
+                    {% if bill.items.exists %}
+                    <div class="mb-3">
+                        <h6>Bill Items:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Description</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in bill.items.all %}
+                                    <tr>
+                                        <td>{{ item.description }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-end">${{ item.line_total|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="2">Subtotal:</th>
+                                        <th class="text-end">${{ bill.subtotal|floatformat:2 }}</th>
+                                    </tr>
+                                    {% if bill.tax_amount %}
+                                    <tr>
+                                        <th colspan="2">Tax:</th>
+                                        <th class="text-end">${{ bill.tax_amount|floatformat:2 }}</th>
+                                    </tr>
+                                    {% endif %}
+                                    <tr class="table-primary">
+                                        <th colspan="2">Total:</th>
+                                        <th class="text-end">${{ bill.total|floatformat:2 }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Expense Preview -->
+                    <div class="card bg-light">
+                        <div class="card-header">
+                            <h6 class="mb-0">Expense to be Created</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <strong>Vendor:</strong> {{ bill.vendor.company_name }}<br>
+                                    <strong>Date:</strong> {{ bill.bill_date }}<br>
+                                    <strong>Amount:</strong> ${{ bill.subtotal|floatformat:2 }}
+                                </div>
+                                <div class="col-6">
+                                    <strong>Tax Amount:</strong> ${{ bill.tax_amount|default:0|floatformat:2 }}<br>
+                                    <strong>Category:</strong> {{ bill.items.first.expense_category.name|default:"TBD" }}<br>
+                                    <strong>Status:</strong> Recorded
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> What will happen:</h6>
+                            <ul class="mb-0">
+                                <li>A new expense will be created with the bill details</li>
+                                <li>The bill will be marked as "Cancelled"</li>
+                                <li>Bill items will be converted to expense description</li>
+                                <li>You can edit the expense after conversion if needed</li>
+                                <li>This action cannot be undone</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'payables:bill_detail' bill.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-exchange-alt"></i> Convert to Expense
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

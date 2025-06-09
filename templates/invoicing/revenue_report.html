@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Revenue Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">Revenue Report</h1>
+            <p class="text-muted">Track your revenue trends over time</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'invoicing:reports' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="col-md-3 form-group">
+                    <label for="period">Time Period</label>
+                    <select name="period" id="period" class="form-control">
+                        <option value="monthly" {% if request.GET.period == 'monthly' %}selected{% endif %}>Monthly</option>
+                        <option value="quarterly" {% if request.GET.period == 'quarterly' %}selected{% endif %}>Quarterly</option>
+                        <option value="yearly" {% if request.GET.period == 'yearly' %}selected{% endif %}>Yearly</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" 
+                           value="{{ request.GET.start_date|default:default_start_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="end_date">End Date</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" 
+                           value="{{ request.GET.end_date|default:default_end_date }}">
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="customer">Customer</label>
+                    <select name="customer" id="customer" class="form-control">
+                        <option value="">All Customers</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if request.GET.customer == customer.id|stringformat:"i" %}selected{% endif %}>
+                            {{ customer }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="status">Invoice Status</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="paid" {% if request.GET.status == 'paid' %}selected{% endif %}>Paid Only</option>
+                        <option value="unpaid" {% if request.GET.status == 'unpaid' %}selected{% endif %}>Unpaid Only</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 form-group">
+                    <label for="chart_type">Chart Type</label>
+                    <select name="chart_type" id="chart_type" class="form-control">
+                        <option value="bar" {% if request.GET.chart_type == 'bar' %}selected{% endif %}>Bar Chart</option>
+                        <option value="line" {% if request.GET.chart_type == 'line' %}selected{% endif %}>Line Chart</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6 form-group d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'invoicing:revenue_report' %}" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Revenue Trend</h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if revenue_data %}
+                    <div style="height: 400px">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <h5>No revenue data found</h5>
+                        <p class="text-muted">Adjust your filters or create some invoices to see revenue data</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Total Revenue</h6>
+                                    <h3 class="mb-0">${{ total_revenue|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Average Per Period</h6>
+                                    <h3 class="mb-0">${{ average_revenue|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Highest Period</h6>
+                                    <h3 class="mb-0">${{ highest_revenue|floatformat:2 }}</h3>
+                                    <small>{{ highest_period }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-12 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted mb-1">Invoice Count</h6>
+                                    <h3 class="mb-0">{{ total_invoices }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Revenue Details</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if revenue_data %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th class="text-right">Total Revenue</th>
+                            <th class="text-right">Invoices Count</th>
+                            <th class="text-right">Average Invoice</th>
+                            <th class="text-center">Compare to Previous</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in revenue_data %}
+                        <tr>
+                            <td>{{ period.period_label }}</td>
+                            <td class="text-right">${{ period.total|floatformat:2 }}</td>
+                            <td class="text-right">{{ period.count }}</td>
+                            <td class="text-right">${{ period.average|floatformat:2 }}</td>
+                            <td class="text-center">
+                                {% if period.change_percent is not None %}
+                                    {% if period.change_percent > 0 %}
+                                    <span class="text-success">
+                                        <i class="fas fa-arrow-up"></i> {{ period.change_percent|floatformat:1 }}%
+                                    </span>
+                                    {% elif period.change_percent < 0 %}
+                                    <span class="text-danger">
+                                        <i class="fas fa-arrow-down"></i> {{ period.change_percent|floatformat:1 }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">0.0%</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No revenue data available for the selected criteria</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if revenue_data %}
+        var ctx = document.getElementById('revenueChart').getContext('2d');
+        var chartType = '{{ request.GET.chart_type|default:"bar" }}';
+        var revenueChart = new Chart(ctx, {
+            type: chartType,
+            data: {
+                labels: [
+                    {% for period in revenue_data %}
+                    '{{ period.period_label }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Revenue',
+                    data: [
+                        {% for period in revenue_data %}
+                        {{ period.total }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+                            callback: function(value, index, values) {
+                                return ' + value;
+                            }
+                        }
+                    }]
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            return 'Revenue:  + Number(tooltipItem.yLabel).toFixed(2);
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}
